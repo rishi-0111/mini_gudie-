@@ -1,4 +1,6 @@
-# Welcome to your Lovable project
+# Mini Gudie
+
+A futuristic travel and safety application built with modern web technologies.
 
 ## Project info
 
