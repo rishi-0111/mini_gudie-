@@ -1,0 +1,180 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
+
+interface TripRequest {
+  from: string;
+  destination: string;
+  budget: { min: number; max: number };
+  days: number;
+  transportMode: string;
+  rating: number;
+  hiddenSpots: boolean;
+  distance: number;
+  language: string;
+}
+
+const languageInstructions: Record<string, string> = {
+  en: "Respond entirely in English.",
+  hi: "पूरी प्रतिक्रिया हिंदी में दें। Respond entirely in Hindi.",
+  ta: "முழு பதிலையும் தமிழில் கொடுங்கள். Respond entirely in Tamil.",
+  te: "మొత్తం ప్రతిస్పందన తెలుగులో ఇవ్వండి. Respond entirely in Telugu.",
+  kn: "ಸಂಪೂರ್ಣ ಪ್ರತಿಕ್ರಿಯೆಯನ್ನು ಕನ್ನಡದಲ್ಲಿ ನೀಡಿ. Respond entirely in Kannada.",
+  ml: "മുഴുവൻ പ്രതികരണവും മലയാളത്തിൽ നൽകുക. Respond entirely in Malayalam.",
+  bn: "সম্পূর্ণ প্রতিক্রিয়া বাংলায় দিন। Respond entirely in Bengali.",
+  mr: "संपूर्ण प्रतिसाद मराठीत द्या. Respond entirely in Marathi.",
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const tripData: TripRequest = await req.json();
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    const langInstruction = languageInstructions[tripData.language] || languageInstructions.en;
+    
+    const systemPrompt = `You are an expert travel planner AI for India. ${langInstruction}
+
+STRICT RULES - YOU MUST FOLLOW:
+1. NEVER exceed the budget of ₹${tripData.budget.min} - ₹${tripData.budget.max}
+2. ONLY recommend places within ${tripData.distance}km radius
+3. ONLY include places with rating >= ${tripData.rating} stars
+4. Plan for exactly ${tripData.days} day(s)
+5. Optimize routes for ${tripData.transportMode} transport mode
+6. ${tripData.hiddenSpots ? "PRIORITIZE hidden gems, local-only spots, non-commercial places. AVOID tourist-heavy Instagram-famous spots." : "Include popular, safe tourist attractions."}
+
+OUTPUT FORMAT (JSON):
+{
+  "tripOverview": {
+    "from": "string",
+    "to": "string",
+    "days": number,
+    "transportMode": "string",
+    "totalBudget": number
+  },
+  "dayWisePlan": [
+    {
+      "day": number,
+      "morning": { "place": "string", "description": "string", "time": "string", "cost": number },
+      "afternoon": { "place": "string", "description": "string", "time": "string", "cost": number },
+      "evening": { "place": "string", "description": "string", "time": "string", "cost": number },
+      "travelDistance": number,
+      "dayCost": number
+    }
+  ],
+  "hiddenSpots": [
+    { "name": "string", "whySpecial": "string", "bestTime": "string", "distance": number }
+  ],
+  "stayRecommendations": [
+    { "name": "string", "distance": number, "rating": number, "pricePerNight": number }
+  ],
+  "foodSpots": [
+    { "name": "string", "specialty": "string", "budgetPerMeal": number }
+  ],
+  "budgetBreakdown": {
+    "stay": number,
+    "food": number,
+    "transport": number,
+    "activities": number,
+    "buffer": number,
+    "total": number
+  }
+}
+
+Respond ONLY with valid JSON. No markdown, no explanations outside JSON.`;
+
+    const userPrompt = `Plan a trip:
+- From: ${tripData.from || "Current Location"}
+- To: ${tripData.destination}
+- Budget: ₹${tripData.budget.min} - ₹${tripData.budget.max}
+- Days: ${tripData.days}
+- Transport: ${tripData.transportMode}
+- Minimum Rating: ${tripData.rating}★
+- Show Hidden Spots: ${tripData.hiddenSpots ? "Yes" : "No"}
+- Max Distance: ${tripData.distance}km`;
+
+    console.log("Generating trip plan for:", tripData.destination, "in language:", tripData.language);
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 4000,
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Usage limit reached. Please add credits." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const errorText = await response.text();
+      console.error("AI gateway error:", response.status, errorText);
+      throw new Error("AI gateway error");
+    }
+
+    const aiResponse = await response.json();
+    const content = aiResponse.choices?.[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error("No content in AI response");
+    }
+
+    // Parse JSON from response (handle potential markdown wrapping)
+    let tripPlan;
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        tripPlan = JSON.parse(jsonMatch[0]);
+      } else {
+        tripPlan = JSON.parse(content);
+      }
+    } catch (parseError) {
+      console.error("Failed to parse AI response:", content);
+      throw new Error("Invalid AI response format");
+    }
+
+    console.log("Trip plan generated successfully");
+
+    return new Response(JSON.stringify(tripPlan), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+  } catch (error) {
+    console.error("generate-trip error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+});

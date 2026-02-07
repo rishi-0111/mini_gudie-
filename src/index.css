@@ -1,0 +1,407 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* LocalGuide Travel Companion - Purple Theme Design System */
+
+@layer base {
+  :root {
+    /* Purple gradient theme */
+    --background: 270 50% 98%;
+    --foreground: 270 50% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 270 50% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 270 50% 10%;
+
+    /* Primary purple palette */
+    --primary: 270 70% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - lighter purple */
+    --secondary: 270 40% 94%;
+    --secondary-foreground: 270 50% 30%;
+
+    /* Muted - soft purple tint */
+    --muted: 270 30% 95%;
+    --muted-foreground: 270 20% 45%;
+
+    /* Accent - orange from logo */
+    --accent: 25 95% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive/Emergency - red for SOS */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success - safe green */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 270 30% 88%;
+    --input: 270 30% 88%;
+    --ring: 270 70% 50%;
+
+    --radius: 1rem;
+
+    /* Custom gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(270 70% 50%) 0%, hsl(290 70% 60%) 50%, hsl(270 60% 65%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(270 70% 45%) 0%, hsl(280 65% 55%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(270 40% 98%) 100%);
+    --gradient-sos: linear-gradient(135deg, hsl(0 84% 55%) 0%, hsl(0 84% 65%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(25 95% 53%) 0%, hsl(35 95% 55%) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 2px 8px -2px hsl(270 50% 30% / 0.1);
+    --shadow-md: 0 4px 16px -4px hsl(270 50% 30% / 0.15);
+    --shadow-lg: 0 8px 32px -8px hsl(270 50% 30% / 0.2);
+    --shadow-glow: 0 0 30px -5px hsl(270 70% 50% / 0.4);
+    --shadow-sos: 0 4px 20px -4px hsl(0 84% 50% / 0.5);
+
+    --sidebar-background: 270 50% 98%;
+    --sidebar-foreground: 270 50% 20%;
+    --sidebar-primary: 270 70% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 270 40% 94%;
+    --sidebar-accent-foreground: 270 50% 20%;
+    --sidebar-border: 270 30% 88%;
+    --sidebar-ring: 270 70% 50%;
+  }
+
+  .dark {
+    --background: 270 50% 5%;
+    --foreground: 270 20% 95%;
+
+    --card: 270 40% 10%;
+    --card-foreground: 270 20% 95%;
+
+    --popover: 270 40% 10%;
+    --popover-foreground: 270 20% 95%;
+
+    --primary: 270 70% 60%;
+    --primary-foreground: 270 50% 5%;
+
+    --secondary: 270 30% 15%;
+    --secondary-foreground: 270 20% 90%;
+
+    --muted: 270 30% 15%;
+    --muted-foreground: 270 20% 65%;
+
+    --accent: 25 95% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 60% 50%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 85% 55%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 270 30% 20%;
+    --input: 270 30% 20%;
+    --ring: 270 70% 60%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(270 70% 40%) 0%, hsl(290 60% 50%) 50%, hsl(270 50% 55%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(270 60% 15%) 0%, hsl(280 55% 25%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(270 40% 12%) 0%, hsl(270 35% 8%) 100%);
+
+    --sidebar-background: 270 50% 8%;
+    --sidebar-foreground: 270 20% 90%;
+    --sidebar-primary: 270 70% 60%;
+    --sidebar-primary-foreground: 270 50% 5%;
+    --sidebar-accent: 270 30% 15%;
+    --sidebar-accent-foreground: 270 20% 90%;
+    --sidebar-border: 270 30% 20%;
+    --sidebar-ring: 270 70% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  /* Gradient backgrounds */
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .bg-gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .bg-gradient-sos {
+    background: var(--gradient-sos);
+  }
+
+  .bg-gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  /* Custom shadows */
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-sos {
+    box-shadow: var(--shadow-sos);
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+  }
+
+  /* Travel card styling */
+  .travel-card {
+    @apply bg-card rounded-2xl p-4 shadow-md transition-all duration-300;
+    box-shadow: var(--shadow-md);
+  }
+
+  .travel-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Category pill */
+  .category-pill {
+    @apply flex flex-col items-center gap-2 p-4 rounded-2xl bg-secondary transition-all duration-200;
+  }
+
+  .category-pill:hover {
+    @apply bg-primary/10 scale-105;
+  }
+
+  .category-pill:active {
+    @apply scale-95;
+  }
+
+  /* SOS Button */
+  .sos-button {
+    @apply relative flex items-center justify-center rounded-full font-bold text-destructive-foreground;
+    background: var(--gradient-sos);
+    box-shadow: var(--shadow-sos);
+    transition: all 0.3s ease;
+  }
+
+  .sos-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 30px -4px hsl(0 84% 50% / 0.6);
+  }
+
+  .sos-button:active {
+    transform: scale(0.95);
+  }
+
+  /* Pulse animation for SOS */
+  .sos-pulse {
+    animation: sos-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes sos-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(0 84% 60% / 0.7);
+    }
+    50% {
+      box-shadow: 0 0 0 20px hsl(0 84% 60% / 0);
+    }
+  }
+
+  /* Input styling */
+  .input-travel {
+    @apply w-full px-4 py-3 rounded-xl bg-secondary border-2 border-transparent transition-all duration-200;
+  }
+
+  .input-travel:focus {
+    @apply border-primary bg-card outline-none ring-2 ring-primary/20;
+  }
+
+  /* OTP input */
+  .otp-input {
+    @apply w-12 h-14 text-center text-xl font-semibold rounded-xl bg-secondary border-2 border-transparent transition-all duration-200;
+  }
+
+  .otp-input:focus {
+    @apply border-primary bg-card outline-none;
+  }
+
+  /* Button variants */
+  .btn-primary {
+    @apply px-6 py-3 rounded-xl font-semibold text-primary-foreground transition-all duration-200;
+    background: var(--gradient-primary);
+  }
+
+  .btn-primary:hover {
+    @apply opacity-90;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 rounded-xl font-semibold bg-secondary text-secondary-foreground transition-all duration-200;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-secondary/80;
+  }
+
+  .btn-accent {
+    @apply px-6 py-3 rounded-xl font-semibold text-accent-foreground transition-all duration-200;
+    background: var(--gradient-accent);
+  }
+
+  .btn-accent:hover {
+    @apply opacity-90;
+    transform: translateY(-1px);
+  }
+
+  /* Link styling */
+  .link-primary {
+    @apply text-primary font-medium transition-colors duration-200;
+  }
+
+  .link-primary:hover {
+    @apply text-primary/80 underline;
+  }
+}
+
+@layer utilities {
+  /* Animations */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+
+  .animate-fade-in-down {
+    animation: fadeInDown 0.6s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.4s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+
+  .animate-bounce-in {
+    animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+  }
+
+  .animate-pulse-soft {
+    animation: pulseSoft 3s ease-in-out infinite;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeInDown {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes bounceIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    70% {
+      transform: scale(0.9);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes pulseSoft {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  /* Stagger delays for lists */
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+  .stagger-5 { animation-delay: 0.5s; }
+  .stagger-6 { animation-delay: 0.6s; }
+}
