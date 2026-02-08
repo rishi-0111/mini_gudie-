@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Circular background with gradient -->
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9b87f5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7E69AB;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Circle background -->
+  <circle cx="256" cy="256" r="256" fill="url(#grad)"/>
+  
+  <!-- Compass/Location icon in white -->
+  <g transform="translate(256, 256)">
+    <!-- Location pin -->
+    <path d="M 0,-120 C -40,-120 -72,-88 -72,-48 C -72,-8 0,80 0,80 C 0,80 72,-8 72,-48 C 72,-88 40,-120 0,-120 Z" 
+          fill="white" opacity="0.95"/>
+    <circle cx="0" cy="-48" r="24" fill="#7E69AB"/>
+    
+    <!-- Compass points -->
+    <g opacity="0.9">
+      <polygon points="0,-180 -12,-140 12,-140" fill="white"/>
+      <polygon points="0,180 -12,140 12,140" fill="white"/>
+      <polygon points="-180,0 -140,-12 -140,12" fill="white"/>
+      <polygon points="180,0 140,-12 140,12" fill="white"/>
+    </g>
+  </g>
+</svg>

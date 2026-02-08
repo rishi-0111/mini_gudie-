@@ -30,49 +30,45 @@ const SplashScreen = () => {
       </div>
 
       {/* Logo */}
-      <div 
-        className={`relative z-10 transition-all duration-700 ease-out ${
-          isVisible ? "opacity-100 scale-100" : "opacity-0 scale-75"
-        }`}
+      <div
+        className={`relative z-10 transition-all duration-700 ease-out ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-75"
+          }`}
       >
         <div className="relative">
           {/* Glow effect */}
           <div className="absolute inset-0 bg-primary-foreground/20 blur-3xl rounded-full scale-150 animate-pulse-soft" />
-          
-          {/* Logo image */}
+
+          {/* Logo image - Circular */}
           <img
             src={logo}
-            alt="LocalGuide Logo"
-            className="w-48 h-48 md:w-56 md:h-56 object-contain relative z-10 drop-shadow-2xl"
+            alt="Mini Guide Logo"
+            className="w-48 h-48 md:w-56 md:h-56 object-cover relative z-10 drop-shadow-2xl rounded-full border-4 border-primary-foreground/20"
           />
         </div>
       </div>
 
       {/* App Name */}
-      <div 
-        className={`mt-8 text-center transition-all duration-700 ease-out delay-200 ${
-          showText ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-        }`}
+      <div
+        className={`mt-8 text-center transition-all duration-700 ease-out delay-200 ${showText ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+          }`}
       >
         <h1 className="text-4xl md:text-5xl font-bold text-primary-foreground tracking-tight">
-          Local<span className="text-accent">Guide</span>
+          Mini <span className="text-accent">Guide</span>
         </h1>
-        
+
         {/* Tagline */}
-        <p 
-          className={`mt-4 text-primary-foreground/80 text-lg md:text-xl max-w-xs mx-auto transition-all duration-700 delay-500 ${
-            showText ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
+        <p
+          className={`mt-4 text-primary-foreground/80 text-lg md:text-xl max-w-xs mx-auto transition-all duration-700 delay-500 ${showText ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
         >
-          Your Smart Local Travel Guide & Safety Partner
+          Your Smart Travel Companion
         </p>
       </div>
 
       {/* Loading indicator */}
-      <div 
-        className={`mt-12 flex gap-2 transition-all duration-700 delay-700 ${
-          showText ? "opacity-100" : "opacity-0"
-        }`}
+      <div
+        className={`mt-12 flex gap-2 transition-all duration-700 delay-700 ${showText ? "opacity-100" : "opacity-0"
+          }`}
       >
         <div className="w-2 h-2 rounded-full bg-primary-foreground/60 animate-bounce" style={{ animationDelay: "0ms" }} />
         <div className="w-2 h-2 rounded-full bg-primary-foreground/60 animate-bounce" style={{ animationDelay: "150ms" }} />

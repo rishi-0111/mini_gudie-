@@ -71,6 +71,11 @@ export const signInWithEmail = async ({
 };
 
 /**
+ * Alias for signInWithEmail (for better naming consistency)
+ */
+export const signInWithPassword = signInWithEmail;
+
+/**
  * Sign in with email OTP (passwordless)
  */
 export const signInWithEmailOTP = async (email: string): Promise<{ error: AuthError | null }> => {

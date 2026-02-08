@@ -1,14 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Phone, Shield, ArrowRight, Loader2 } from "lucide-react";
+import { Phone, Lock, ArrowRight, Loader2, Eye, EyeOff, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { signInWithPassword, signInWithPhoneOTP, verifyOTP, signInWithGoogle } from "@/integrations/supabase/auth";
 
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [step, setStep] = useState<"mobile" | "otp">("mobile");
+  const [loginMethod, setLoginMethod] = useState<"password" | "otp">("password");
+  const [step, setStep] = useState<"credentials" | "otp">("credentials");
   const [isLoading, setIsLoading] = useState(false);
-  const [mobile, setMobile] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [formData, setFormData] = useState({
+    mobile: "",
+    password: "",
+  });
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -18,8 +25,88 @@ const Login = () => {
     }
   }, [step]);
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordLogin = async () => {
+    // Validation
+    if (!formData.mobile || !formData.password) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter both mobile number and password",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.mobile.length !== 10) {
+      toast({
+        title: "Invalid Mobile Number",
+        description: "Please enter a valid 10-digit mobile number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast({
+        title: "Invalid Password",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const email = `${formData.mobile}@example.com`;
+
+      const { user, error } = await signInWithPassword({
+        email,
+        password: formData.password,
+      });
+
+      if (error) {
+        toast({
+          title: "Login Failed",
+          description: error.message || "Invalid credentials. Please check your mobile number and password.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (user) {
+        // Handle remember me
+        if (rememberMe) {
+          localStorage.setItem("rememberMe", "true");
+          localStorage.setItem("savedMobile", formData.mobile);
+        } else {
+          localStorage.removeItem("rememberMe");
+          localStorage.removeItem("savedMobile");
+        }
+
+        toast({
+          title: "Login Successful!",
+          description: "Welcome back to Mini Gudie",
+        });
+        navigate("/home");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Unexpected Error",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSendOTP = async () => {
-    if (mobile.length < 10) {
+    if (!formData.mobile || formData.mobile.length !== 10) {
       toast({
         title: "Invalid Mobile Number",
         description: "Please enter a valid 10-digit mobile number",
@@ -29,13 +116,34 @@ const Login = () => {
     }
 
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    setStep("otp");
-    toast({
-      title: "OTP Sent!",
-      description: "Please check your mobile for the verification code",
-    });
+
+    try {
+      const phoneNumber = `+91${formData.mobile}`;
+      const { error } = await signInWithPhoneOTP(phoneNumber);
+
+      if (error) {
+        toast({
+          title: "OTP Sending Failed",
+          description: error.message || "Could not send OTP. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setStep("otp");
+      toast({
+        title: "OTP Sent!",
+        description: "Please check your mobile for the verification code",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Unexpected Error",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleOTPChange = (index: number, value: string) => {
@@ -69,23 +177,94 @@ const Login = () => {
     }
 
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    
-    toast({
-      title: "Login Successful!",
-      description: "Welcome back to LocalGuide",
-    });
-    navigate("/home");
+
+    try {
+      const phoneNumber = `+91${formData.mobile}`;
+      const { user, error } = await verifyOTP(phoneNumber, otpValue, "sms");
+
+      if (error) {
+        toast({
+          title: "Verification Failed",
+          description: error.message || "Invalid OTP. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (user) {
+        // Handle remember me
+        if (rememberMe) {
+          localStorage.setItem("rememberMe", "true");
+          localStorage.setItem("savedMobile", formData.mobile);
+        }
+
+        toast({
+          title: "Login Successful!",
+          description: "Welcome back to Mini Gudie",
+        });
+        navigate("/home");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Unexpected Error",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleGoogleSignIn = () => {
-    toast({
-      title: "Google Sign-In",
-      description: "Redirecting to Google...",
-    });
-    setTimeout(() => navigate("/home"), 1500);
+  const handleResendOTP = async () => {
+    setOtp(["", "", "", "", "", ""]);
+    await handleSendOTP();
   };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const { error } = await signInWithGoogle();
+
+      if (error) {
+        toast({
+          title: "Google Sign-In Failed",
+          description: error.message || "Could not sign in with Google",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Redirecting to Google",
+        description: "Please wait...",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Unexpected Error",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      if (loginMethod === "password") {
+        handlePasswordLogin();
+      } else {
+        handleSendOTP();
+      }
+    }
+  };
+
+  // Load saved mobile if remember me was checked
+  useEffect(() => {
+    const savedRememberMe = localStorage.getItem("rememberMe");
+    const savedMobile = localStorage.getItem("savedMobile");
+    if (savedRememberMe === "true" && savedMobile) {
+      setRememberMe(true);
+      setFormData((prev) => ({ ...prev, mobile: savedMobile }));
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -104,8 +283,30 @@ const Login = () => {
       {/* Form Card */}
       <div className="flex-1 px-6 -mt-8">
         <div className="travel-card animate-fade-in-up">
-          {step === "mobile" ? (
+          {step === "credentials" ? (
             <div className="space-y-5">
+              {/* Login Method Toggle */}
+              <div className="flex gap-2 p-1 bg-muted rounded-lg">
+                <button
+                  onClick={() => setLoginMethod("password")}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${loginMethod === "password"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                    }`}
+                >
+                  Password
+                </button>
+                <button
+                  onClick={() => setLoginMethod("otp")}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${loginMethod === "otp"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                    }`}
+                >
+                  OTP
+                </button>
+              </div>
+
               {/* Mobile Input */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground/80">
@@ -115,8 +316,10 @@ const Login = () => {
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <input
                     type="tel"
-                    value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
+                    name="mobile"
+                    value={formData.mobile}
+                    onChange={handleInputChange}
+                    onKeyPress={handleKeyPress}
                     placeholder="Enter 10-digit mobile number"
                     maxLength={10}
                     className="input-travel pl-12"
@@ -124,9 +327,70 @@ const Login = () => {
                 </div>
               </div>
 
-              {/* Send OTP Button */}
+              {/* Password Input (shown only for password login) */}
+              {loginMethod === "password" && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground/80">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        onKeyPress={handleKeyPress}
+                        placeholder="Enter your password"
+                        className="input-travel pl-12 pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Forgot Password Link */}
+                  <div className="text-right">
+                    <Link
+                      to="/forgot-password"
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Forgot Password?
+                    </Link>
+                  </div>
+                </>
+              )}
+
+              {/* Remember Me Checkbox */}
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label
+                  htmlFor="rememberMe"
+                  className="text-sm text-foreground/80 cursor-pointer"
+                >
+                  Remember me
+                </label>
+              </div>
+
+              {/* Login Button */}
               <button
-                onClick={handleSendOTP}
+                onClick={loginMethod === "password" ? handlePasswordLogin : handleSendOTP}
                 disabled={isLoading}
                 className="btn-primary w-full flex items-center justify-center gap-2 mt-6"
               >
@@ -134,7 +398,7 @@ const Login = () => {
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    Send OTP
+                    {loginMethod === "password" ? "Login" : "Send OTP"}
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
@@ -187,7 +451,7 @@ const Login = () => {
                 </div>
                 <h2 className="text-xl font-semibold">Verify OTP</h2>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Enter the 6-digit code sent to {mobile}
+                  Enter the 6-digit code sent to +91 {formData.mobile}
                 </p>
               </div>
 
@@ -210,7 +474,11 @@ const Login = () => {
 
               {/* Resend OTP */}
               <div className="text-center">
-                <button className="text-sm text-primary hover:underline">
+                <button
+                  onClick={handleResendOTP}
+                  disabled={isLoading}
+                  className="text-sm text-primary hover:underline disabled:opacity-50"
+                >
                   Resend OTP
                 </button>
               </div>
@@ -225,7 +493,7 @@ const Login = () => {
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    Login
+                    Verify & Login
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
@@ -233,7 +501,7 @@ const Login = () => {
 
               {/* Back Button */}
               <button
-                onClick={() => setStep("mobile")}
+                onClick={() => setStep("credentials")}
                 className="btn-secondary w-full mt-2"
               >
                 Back
@@ -250,9 +518,6 @@ const Login = () => {
               Sign Up
             </Link>
           </p>
-          <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-primary">
-            Forgot password / Reset
-          </Link>
         </div>
       </div>
     </div>

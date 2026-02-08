@@ -73,8 +73,9 @@ const SignUp = () => {
     setIsLoading(true);
 
     try {
-      // First, create the account with email and password
-      const email = `${formData.mobile}@minigudie.app`;
+      // Use example.com domain which is universally accepted for testing
+      // This is a reserved domain that won't trigger validation errors
+      const email = `${formData.mobile}@example.com`;
 
       const { user, error: signUpError } = await signUpWithEmail({
         email,
@@ -84,11 +85,20 @@ const SignUp = () => {
       });
 
       if (signUpError) {
-        toast({
-          title: "Registration Failed",
-          description: signUpError.message || "Failed to create account. Please try again.",
-          variant: "destructive",
-        });
+        // Check if it's an email validation error
+        if (signUpError.message?.includes('invalid') || signUpError.message?.includes('email')) {
+          toast({
+            title: "Registration Error",
+            description: "Please make sure email confirmation is disabled in Supabase settings. Go to Authentication → Settings → Email Auth and disable 'Confirm email'.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Registration Failed",
+            description: signUpError.message || "Failed to create account. Please try again.",
+            variant: "destructive",
+          });
+        }
         setIsLoading(false);
         return;
       }
