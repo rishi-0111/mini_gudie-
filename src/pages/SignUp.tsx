@@ -1,16 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { User, Phone, Shield, ArrowRight, Loader2 } from "lucide-react";
+import { User, Phone, Shield, ArrowRight, Loader2, Lock, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { signInWithPhoneOTP, verifyOTP, signInWithGoogle, signUpWithEmail } from "@/integrations/supabase/auth";
+import { supabase } from "@/integrations/supabase/client";
 
 const SignUp = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [step, setStep] = useState<"details" | "otp">("details");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
     mobile: "",
+    password: "",
+    confirmPassword: "",
   });
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -27,8 +32,9 @@ const SignUp = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSendOTP = async () => {
-    if (!formData.username || !formData.mobile) {
+  const handleSignUp = async () => {
+    // Validation
+    if (!formData.username || !formData.mobile || !formData.password || !formData.confirmPassword) {
       toast({
         title: "Missing Information",
         description: "Please fill in all fields",
@@ -46,15 +52,77 @@ const SignUp = () => {
       return;
     }
 
+    if (formData.password.length < 6) {
+      toast({
+        title: "Weak Password",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Passwords Don't Match",
+        description: "Please make sure both passwords are identical",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
-    // Simulate OTP sending
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    setStep("otp");
-    toast({
-      title: "OTP Sent!",
-      description: "Please check your mobile for the verification code",
-    });
+
+    try {
+      // First, create the account with email and password
+      const email = `${formData.mobile}@minigudie.app`;
+
+      const { user, error: signUpError } = await signUpWithEmail({
+        email,
+        password: formData.password,
+        fullName: formData.username,
+        phoneNumber: `+91${formData.mobile}`,
+      });
+
+      if (signUpError) {
+        toast({
+          title: "Registration Failed",
+          description: signUpError.message || "Failed to create account. Please try again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Now send OTP for mobile verification
+      const phoneNumber = `+91${formData.mobile}`;
+      const { error: otpError } = await signInWithPhoneOTP(phoneNumber);
+
+      if (otpError) {
+        toast({
+          title: "OTP Sending Failed",
+          description: "Account created but couldn't send OTP. You can login with your password.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        // Still allow them to proceed
+        setTimeout(() => navigate("/home"), 2000);
+        return;
+      }
+
+      setStep("otp");
+      toast({
+        title: "Account Created!",
+        description: "Please verify your mobile number with the OTP sent.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleOTPChange = (index: number, value: string) => {
@@ -89,24 +157,101 @@ const SignUp = () => {
     }
 
     setIsLoading(true);
-    // Simulate verification
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    
-    toast({
-      title: "Registration Successful!",
-      description: "Welcome to LocalGuide",
-    });
-    navigate("/home");
+
+    try {
+      const phoneNumber = `+91${formData.mobile}`;
+
+      const { user, error } = await verifyOTP(phoneNumber, otpValue, 'sms');
+
+      if (error) {
+        toast({
+          title: "Verification Failed",
+          description: error.message || "Invalid OTP. Please try again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (user) {
+        // Update user profile with username
+        // @ts-ignore - Types will be generated after schema is applied
+        await supabase
+          .from('users_profile')
+          .update({ full_name: formData.username })
+          .eq('id', user.id);
+
+        toast({
+          title: "Registration Successful!",
+          description: `Welcome to Mini Gudie, ${formData.username}!`,
+        });
+
+        // Navigate to home after successful registration
+        setTimeout(() => navigate("/home"), 1000);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
   };
 
-  const handleGoogleSignIn = () => {
-    toast({
-      title: "Google Sign-In",
-      description: "Redirecting to Google...",
-    });
-    // In a real app, this would trigger OAuth flow
-    setTimeout(() => navigate("/home"), 1500);
+  const handleResendOTP = async () => {
+    setIsLoading(true);
+    try {
+      const phoneNumber = `+91${formData.mobile}`;
+      const { error } = await signInWithPhoneOTP(phoneNumber);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to resend OTP. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "OTP Resent!",
+          description: "Please check your mobile for the new verification code",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const { error } = await signInWithGoogle();
+
+      if (error) {
+        toast({
+          title: "Google Sign-In Failed",
+          description: error.message || "Failed to sign in with Google",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Google Sign-In",
+        description: "Redirecting to Google...",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -163,11 +308,61 @@ const SignUp = () => {
                     className="input-travel pl-12"
                   />
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  We'll send an OTP to verify your number
+                </p>
               </div>
 
-              {/* Send OTP Button */}
+              {/* Password Field */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground/80">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Create a password (min 6 characters)"
+                    className="input-travel pl-12 pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm Password Field */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground/80">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    placeholder="Confirm your password"
+                    className="input-travel pl-12"
+                  />
+                </div>
+              </div>
+
+              {/* Sign Up Button */}
               <button
-                onClick={handleSendOTP}
+                onClick={handleSignUp}
                 disabled={isLoading}
                 className="btn-primary w-full flex items-center justify-center gap-2 mt-6"
               >
@@ -175,7 +370,7 @@ const SignUp = () => {
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    Send OTP
+                    Create Account
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
@@ -216,7 +411,7 @@ const SignUp = () => {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                Sign in with Google
+                Sign up with Google
               </button>
             </div>
           ) : (
@@ -226,9 +421,9 @@ const SignUp = () => {
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                   <Shield className="w-8 h-8 text-primary" />
                 </div>
-                <h2 className="text-xl font-semibold">Verify OTP</h2>
+                <h2 className="text-xl font-semibold">Verify Mobile Number</h2>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Enter the 6-digit code sent to {formData.mobile}
+                  Enter the 6-digit code sent to +91 {formData.mobile}
                 </p>
               </div>
 
@@ -251,7 +446,11 @@ const SignUp = () => {
 
               {/* Resend OTP */}
               <div className="text-center">
-                <button className="text-sm text-primary hover:underline">
+                <button
+                  onClick={handleResendOTP}
+                  disabled={isLoading}
+                  className="text-sm text-primary hover:underline disabled:opacity-50"
+                >
                   Resend OTP
                 </button>
               </div>
@@ -266,7 +465,7 @@ const SignUp = () => {
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    Confirm Registration
+                    Verify & Complete Registration
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}

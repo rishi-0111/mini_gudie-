@@ -13,6 +13,8 @@ import TripPlanner from "./pages/TripPlanner";
 import Explore from "./pages/Explore";
 import Discover from "./pages/Discover";
 import Booking from "./pages/Booking";
+import AuthCallback from "./pages/AuthCallback";
+import TestSupabase from "./pages/TestSupabase";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +30,8 @@ const App = () => (
             <Route path="/" element={<SplashScreen />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/test-supabase" element={<TestSupabase />} />
             <Route path="/home" element={<Home />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/trip-planner" element={<TripPlanner />} />
