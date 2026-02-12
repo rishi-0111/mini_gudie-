@@ -1,5 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   ArrowLeft,
   Search,
@@ -22,6 +24,8 @@ import BottomNav from "@/components/BottomNav";
 import FloatingSOS from "@/components/FloatingSOS";
 import InteractiveMap from "@/components/InteractiveMap";
 import { useLanguage } from "@/contexts/LanguageContext";
+
+gsap.registerPlugin(ScrollTrigger);
 
 type Category = "all" | "transport" | "hostel" | "attraction";
 type SortOption = "bestMatch" | "cheapest" | "safest" | "nearest";
@@ -54,6 +58,42 @@ const Booking = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [minRating, setMinRating] = useState(0);
+
+  const pageRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const itemsListRef = useRef<HTMLDivElement>(null);
+
+  // GSAP entrance animations
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.fromTo(heroRef.current, { y: -60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" });
+    }, pageRef);
+    return () => ctx.revert();
+  }, []);
+
+  // Animate items on filter change with scrub scroll timeline
+  useEffect(() => {
+    if (viewMode === "list" && itemsListRef.current) {
+      const itemsTl = gsap.timeline({
+        scrollTrigger: {
+          scrub: 1,
+          trigger: itemsListRef.current,
+          start: "top 90%",
+          end: "bottom 30%",
+        },
+      });
+      itemsTl.fromTo(
+        itemsListRef.current.children,
+        { y: 25, opacity: 0, scale: 0.95 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.4, stagger: 0.07, ease: "power2.out" }
+      );
+
+      return () => {
+        itemsTl.scrollTrigger?.kill();
+        itemsTl.kill();
+      };
+    }
+  }, [viewMode, selectedCategory, sortBy]);
 
   const categories: { id: Category; label: string; icon: typeof Car }[] = [
     { id: "all", label: t.viewAll, icon: Filter },
@@ -261,9 +301,9 @@ const Booking = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div ref={pageRef} className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <div className="bg-gradient-hero px-6 pt-8 pb-6 rounded-b-[2rem]">
+      <div ref={heroRef} className="bg-gradient-hero px-6 pt-8 pb-6 rounded-b-[2rem]">
         <div className="flex items-center gap-4 mb-4">
           <Link
             to="/home"
@@ -383,12 +423,11 @@ const Booking = () => {
 
         {/* Content */}
         {viewMode === "list" ? (
-          <div className="space-y-4">
-            {filteredAndSortedItems.map((item, index) => (
+          <div ref={itemsListRef} className="space-y-4">
+            {filteredAndSortedItems.map((item) => (
               <div
                 key={item.id}
-                className="travel-card flex gap-4 animate-fade-in-up"
-                style={{ animationDelay: `${index * 50}ms`, opacity: 0, animationFillMode: "forwards" }}
+                className="travel-card flex gap-4"
               >
                 {/* Item Image/Emoji */}
                 <div className="w-20 h-20 rounded-xl bg-secondary flex items-center justify-center text-4xl shrink-0">

@@ -26,18 +26,22 @@ interface InteractiveMapProps {
   zoom?: number;
   onMarkerClick?: (marker: MapMarker) => void;
   className?: string;
+  userLocation?: [number, number] | null;
 }
 
 const InteractiveMap = ({
   markers,
-  center = [20.5937, 78.9629], // Default to India center
+  center = [20.5937, 78.9629],
   zoom = 5,
   onMarkerClick,
   className = "",
+  userLocation,
 }: InteractiveMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const userMarkerRef = useRef<L.CircleMarker | null>(null);
+  const userPulseRef = useRef<L.CircleMarker | null>(null);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -67,9 +71,48 @@ const InteractiveMap = ({
   // Update center when it changes
   useEffect(() => {
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.setView(center, zoom);
+      mapInstanceRef.current.setView(center, zoom, { animate: true });
     }
   }, [center, zoom]);
+
+  // User location marker
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    // Remove previous user markers
+    if (userMarkerRef.current) { map.removeLayer(userMarkerRef.current); userMarkerRef.current = null; }
+    if (userPulseRef.current) { map.removeLayer(userPulseRef.current); userPulseRef.current = null; }
+
+    if (!userLocation) return;
+
+    // Pulse ring
+    userPulseRef.current = L.circleMarker(userLocation, {
+      radius: 20,
+      color: "hsl(270,70%,50%)",
+      fillColor: "hsl(270,70%,55%)",
+      fillOpacity: 0.2,
+      weight: 2,
+      opacity: 0.5,
+      className: "live-pulse",
+    }).addTo(map);
+
+    // Inner dot
+    userMarkerRef.current = L.circleMarker(userLocation, {
+      radius: 8,
+      color: "#ffffff",
+      fillColor: "hsl(270,70%,50%)",
+      fillOpacity: 1,
+      weight: 3,
+    })
+      .bindPopup(
+        `<div style="font-family:system-ui;text-align:center;">
+          <p style="margin:0;font-weight:600;font-size:13px;">📍 You are here</p>
+          <p style="margin:4px 0 0;font-size:11px;color:#6b7280;">${userLocation[0].toFixed(5)}, ${userLocation[1].toFixed(5)}</p>
+        </div>`
+      )
+      .addTo(map);
+  }, [userLocation]);
 
   // Update markers when they change
   useEffect(() => {

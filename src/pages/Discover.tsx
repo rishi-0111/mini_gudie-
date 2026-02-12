@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   ArrowLeft,
   Sparkles,
@@ -15,6 +17,9 @@ import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 import FloatingSOS from "@/components/FloatingSOS";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { ThreeScene, LazyParticleField } from "@/components/three/LazyThreeScenes";
+
+gsap.registerPlugin(ScrollTrigger);
 
 interface HiddenSpot {
   id: string;
@@ -34,6 +39,50 @@ const Discover = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [destination, setDestination] = useState("");
   const [spots, setSpots] = useState<HiddenSpot[]>([]);
+
+  const pageRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const searchCardRef = useRef<HTMLDivElement>(null);
+  const spotsListRef = useRef<HTMLDivElement>(null);
+
+  // GSAP entrance animations
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      tl.fromTo(heroRef.current, { y: -60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 });
+      tl.fromTo(
+        searchCardRef.current,
+        { y: 40, opacity: 0, scale: 0.95 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.2)" },
+        "-=0.3"
+      );
+    }, pageRef);
+    return () => ctx.revert();
+  }, []);
+
+  // Animate spots when they appear with scrub scroll timeline
+  useEffect(() => {
+    if (spots.length > 0 && spotsListRef.current) {
+      const spotsTl = gsap.timeline({
+        scrollTrigger: {
+          scrub: 1,
+          trigger: spotsListRef.current,
+          start: "top 90%",
+          end: "bottom 30%",
+        },
+      });
+      spotsTl.fromTo(
+        spotsListRef.current.children,
+        { y: 30, opacity: 0, scale: 0.95 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.5, stagger: 0.12, ease: "back.out(1.2)" }
+      );
+
+      return () => {
+        spotsTl.scrollTrigger?.kill();
+        spotsTl.kill();
+      };
+    }
+  }, [spots]);
 
   const handleDiscover = async () => {
     if (!destination) {
@@ -99,19 +148,24 @@ const Discover = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div ref={pageRef} className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <div className="bg-gradient-hero px-6 pt-8 pb-16 rounded-b-[2rem]">
-        <div className="flex items-center gap-4 mb-6">
+      <div ref={heroRef} className="bg-gradient-hero px-6 pt-8 pb-16 rounded-b-[2rem] relative overflow-hidden">
+        <div className="absolute inset-0 opacity-20">
+          <ThreeScene className="absolute inset-0">
+            <LazyParticleField particleCount={40} color="#f97316" speed={0.15} />
+          </ThreeScene>
+        </div>
+        <div className="flex items-center gap-4 mb-6 relative z-10">
           <Link
             to="/home"
-            className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center"
+            className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center backdrop-blur-sm"
           >
             <ArrowLeft className="w-5 h-5 text-primary-foreground" />
           </Link>
           <h1 className="text-xl font-bold text-primary-foreground">{t.discover}</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 relative z-10">
           <Sparkles className="w-6 h-6 text-accent" />
           <div>
             <p className="text-primary-foreground font-medium">
@@ -126,7 +180,7 @@ const Discover = () => {
 
       <div className="px-6 -mt-8">
         {/* Search Card */}
-        <div className="travel-card animate-fade-in-up mb-6">
+        <div ref={searchCardRef} className="travel-card mb-6">
           <h3 className="font-semibold mb-4">{t.search} {t.hiddenSpots}</h3>
           <div className="relative mb-4">
             <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -162,17 +216,16 @@ const Discover = () => {
 
         {/* Results */}
         {spots.length > 0 && (
-          <div className="space-y-4">
+          <div ref={spotsListRef} className="space-y-4">
             <h3 className="font-semibold text-lg flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-accent" />
               AI Recommendations
             </h3>
 
-            {spots.map((spot, index) => (
+            {spots.map((spot) => (
               <div
                 key={spot.id}
-                className="travel-card animate-fade-in-up"
-                style={{ animationDelay: `${index * 100}ms`, opacity: 0, animationFillMode: "forwards" }}
+                className="travel-card"
               >
                 <div className="flex gap-4">
                   <div className="w-16 h-16 rounded-xl bg-secondary flex items-center justify-center text-3xl">

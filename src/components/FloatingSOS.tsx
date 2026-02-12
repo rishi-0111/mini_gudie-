@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Phone, X, CheckCircle, Loader2 } from "lucide-react";
+import gsap from "gsap";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -11,10 +12,63 @@ const FloatingSOS = () => {
   const [isSending, setIsSending] = useState(false);
   const [isSent, setIsSent] = useState(false);
 
-  const handleSOSPress = () => {
+  const sosBtnRef = useRef<HTMLButtonElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const successRef = useRef<HTMLDivElement>(null);
+
+  // GSAP entrance for main SOS button
+  useEffect(() => {
+    if (sosBtnRef.current && !isConfirming && !isSent) {
+      gsap.fromTo(
+        sosBtnRef.current,
+        { scale: 0, rotation: -180 },
+        { scale: 1, rotation: 0, duration: 0.7, delay: 1.2, ease: "back.out(1.7)" }
+      );
+
+      // Continuous pulse glow
+      gsap.to(sosBtnRef.current, {
+        boxShadow: "0 0 30px 8px hsla(0, 84%, 60%, 0.5)",
+        duration: 1,
+        repeat: -1,
+        yoyo: true,
+        ease: "sine.inOut",
+      });
+    }
+  }, [isConfirming, isSent]);
+
+  // GSAP modal animation
+  useEffect(() => {
+    if (isConfirming && modalRef.current) {
+      gsap.fromTo(
+        modalRef.current,
+        { scale: 0.8, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.7)" }
+      );
+    }
+  }, [isConfirming]);
+
+  // GSAP success animation
+  useEffect(() => {
+    if (isSent && successRef.current) {
+      gsap.fromTo(
+        successRef.current,
+        { scale: 0, rotation: -90 },
+        { scale: 1, rotation: 0, duration: 0.6, ease: "back.out(2)" }
+      );
+    }
+  }, [isSent]);
+
+  const handleSOSPress = useCallback(() => {
+    if (sosBtnRef.current) {
+      gsap.fromTo(
+        sosBtnRef.current,
+        { scale: 1.3 },
+        { scale: 1, duration: 0.3, ease: "power2.out" }
+      );
+    }
     setIsPressed(true);
     setIsConfirming(true);
-  };
+  }, []);
 
   const handleConfirmSOS = async () => {
     setIsSending(true);
@@ -46,7 +100,7 @@ const FloatingSOS = () => {
   if (isSent) {
     return (
       <div className="fixed right-6 bottom-28 z-50">
-        <div className="w-16 h-16 rounded-full bg-success flex items-center justify-center animate-scale-in shadow-lg">
+        <div ref={successRef} className="w-16 h-16 rounded-full bg-success flex items-center justify-center shadow-lg">
           <CheckCircle className="w-8 h-8 text-success-foreground" />
         </div>
       </div>
@@ -56,7 +110,7 @@ const FloatingSOS = () => {
   if (isConfirming) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="travel-card p-6 animate-scale-in max-w-sm w-full">
+        <div ref={modalRef} className="travel-card p-6 max-w-sm w-full">
           <div className="text-center">
             <div className="w-20 h-20 sos-button sos-pulse mx-auto mb-4">
               <Phone className="w-8 h-8" />

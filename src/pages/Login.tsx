@@ -1,8 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import gsap from "gsap";
 import { Phone, Lock, ArrowRight, Loader2, Eye, EyeOff, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { signInWithPassword, signInWithPhoneOTP, verifyOTP, signInWithGoogle } from "@/integrations/supabase/auth";
+import { ThreeScene, LazyGlobeScene } from "@/components/three/LazyThreeScenes";
+import MagneticButton from "@/components/MagneticButton";
+import logo from "@/assets/logo.png";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -18,6 +22,81 @@ const Login = () => {
   });
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // GSAP refs
+  const pageRef = useRef<HTMLDivElement>(null);
+  const logoRef = useRef<HTMLImageElement>(null);
+  const headerCardRef = useRef<HTMLDivElement>(null);
+  const formCardRef = useRef<HTMLDivElement>(null);
+
+  // GSAP matchMedia — respects prefers-reduced-motion
+  useEffect(() => {
+    const mm = gsap.matchMedia();
+
+    mm.add(
+      {
+        reduceMotion: "(prefers-reduced-motion: reduce)",
+        normal: "(prefers-reduced-motion: no-preference)",
+      },
+      (context) => {
+        const { reduceMotion } = context.conditions!;
+
+        // Logo spin + bounce
+        gsap.fromTo(
+          logoRef.current,
+          { opacity: 0, scale: 0, rotation: reduceMotion ? 0 : -180 },
+          {
+            opacity: 1,
+            scale: 1,
+            rotation: 0,
+            duration: reduceMotion ? 0.3 : 0.9,
+            delay: 0.2,
+            ease: reduceMotion ? "power1.out" : "back.out(1.7)",
+          }
+        );
+
+        // Header card slide
+        gsap.fromTo(
+          headerCardRef.current,
+          { y: reduceMotion ? 0 : -40, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: reduceMotion ? 0.2 : 0.7,
+            delay: reduceMotion ? 0 : 0.3,
+            ease: "power3.out",
+          }
+        );
+
+        // Form card slide up
+        gsap.fromTo(
+          formCardRef.current,
+          { y: reduceMotion ? 0 : 40, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: reduceMotion ? 0.2 : 0.7,
+            delay: reduceMotion ? 0 : 0.5,
+            ease: "power3.out",
+          }
+        );
+
+        // Continuous logo float — skip if reduced motion
+        if (!reduceMotion) {
+          gsap.to(logoRef.current, {
+            y: -6,
+            duration: 2,
+            repeat: -1,
+            yoyo: true,
+            ease: "sine.inOut",
+            delay: 1.2,
+          });
+        }
+      }
+    );
+
+    return () => mm.revert();
+  }, []);
 
   useEffect(() => {
     if (step === "otp" && otpRefs.current[0]) {
@@ -267,12 +346,32 @@ const Login = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 flex items-center justify-center p-4">
+    <div ref={pageRef} className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Three.js Globe Background */}
+      <div className="absolute inset-0 opacity-[0.07]">
+        <ThreeScene className="absolute inset-0">
+          <LazyGlobeScene />
+        </ThreeScene>
+      </div>
+
+      {/* Logo — top-right corner */}
+      <div className="absolute top-6 right-6 z-20">
+        <div className="relative">
+          <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full scale-150" />
+          <img
+            ref={logoRef}
+            src={logo}
+            alt="Mini Guide Logo"
+            className="w-16 h-16 object-cover relative z-10 rounded-full border-[3px] border-white/30 shadow-lg opacity-0"
+          />
+        </div>
+      </div>
+
       {/* Centered Card Container */}
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md relative z-10">
         {/* Header Card */}
-        <div className="bg-gradient-hero px-8 py-10 rounded-t-3xl shadow-lg">
-          <div className="animate-fade-in-down text-center">
+        <div ref={headerCardRef} className="bg-gradient-hero px-8 py-8 rounded-t-3xl shadow-lg opacity-0">
+          <div className="text-center">
             <h1 className="text-3xl font-bold text-primary-foreground">
               Welcome Back 👋
             </h1>
@@ -283,8 +382,8 @@ const Login = () => {
         </div>
 
         {/* Form Card */}
-        <div className="bg-white px-8 py-8 rounded-b-3xl shadow-xl">
-          <div className="animate-fade-in-up">
+        <div ref={formCardRef} className="bg-white px-8 py-8 rounded-b-3xl shadow-xl opacity-0">
+          <div>
             {step === "credentials" ? (
               <div className="space-y-5">
                 {/* Login Method Toggle */}
@@ -391,10 +490,10 @@ const Login = () => {
                 </div>
 
                 {/* Login Button */}
-                <button
+                <MagneticButton
                   onClick={loginMethod === "password" ? handlePasswordLogin : handleSendOTP}
                   disabled={isLoading}
-                  className="btn-primary w-full flex items-center justify-center gap-2 mt-6"
+                  className="w-full mt-6"
                 >
                   {isLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -404,7 +503,7 @@ const Login = () => {
                       <ArrowRight className="w-5 h-5" />
                     </>
                   )}
-                </button>
+                </MagneticButton>
 
                 {/* Divider */}
                 <div className="relative my-6">
@@ -486,10 +585,10 @@ const Login = () => {
                 </div>
 
                 {/* Verify Button */}
-                <button
+                <MagneticButton
                   onClick={handleVerifyOTP}
                   disabled={isLoading}
-                  className="btn-primary w-full flex items-center justify-center gap-2"
+                  className="w-full"
                 >
                   {isLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -499,7 +598,7 @@ const Login = () => {
                       <ArrowRight className="w-5 h-5" />
                     </>
                   )}
-                </button>
+                </MagneticButton>
 
                 {/* Back Button */}
                 <button

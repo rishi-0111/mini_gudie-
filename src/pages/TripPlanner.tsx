@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
@@ -8,6 +10,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import TripFilters, { TripFilterValues } from "@/components/trip/TripFilters";
 import TripItinerary from "@/components/trip/TripItinerary";
 import { supabase } from "@/integrations/supabase/client";
+import { ThreeScene, LazyFloatingIconsScene } from "@/components/three/LazyThreeScenes";
+
+gsap.registerPlugin(ScrollTrigger);
 
 interface TripPlan {
   tripOverview: {
@@ -59,6 +64,32 @@ const TripPlanner = () => {
   const [showPlan, setShowPlan] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatedPlan, setGeneratedPlan] = useState<TripPlan | null>(null);
+
+  const pageRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      // Hero entrance (immediate)
+      gsap.fromTo(heroRef.current, { y: -60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" });
+
+      // Content area with scrub scroll timeline
+      gsap.timeline({
+        scrollTrigger: {
+          scrub: 1,
+          trigger: contentRef.current,
+          start: "top 90%",
+          end: "bottom 30%",
+        },
+      }).fromTo(
+        contentRef.current,
+        { y: 40, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.6 }
+      );
+    }, pageRef);
+    return () => ctx.revert();
+  }, []);
 
   const [filterValues, setFilterValues] = useState<TripFilterValues>({
     from: "",
@@ -161,22 +192,27 @@ const TripPlanner = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div ref={pageRef} className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <div className="bg-gradient-hero px-6 pt-8 pb-16 rounded-b-[2rem]">
-        <div className="flex items-center gap-4 mb-6">
+      <div ref={heroRef} className="bg-gradient-hero px-6 pt-8 pb-16 rounded-b-[2rem] relative overflow-hidden">
+        <div className="absolute inset-0 opacity-20">
+          <ThreeScene className="absolute inset-0">
+            <LazyFloatingIconsScene />
+          </ThreeScene>
+        </div>
+        <div className="flex items-center gap-4 mb-6 relative z-10">
           <Link
             to="/home"
-            className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center"
+            className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center backdrop-blur-sm"
           >
             <ArrowLeft className="w-5 h-5 text-primary-foreground" />
           </Link>
           <h1 className="text-xl font-bold text-primary-foreground">{t.tripPlanner}</h1>
         </div>
-        <p className="text-primary-foreground/80">{t.generateItinerary}</p>
+        <p className="text-primary-foreground/80 relative z-10">{t.generateItinerary}</p>
       </div>
 
-      <div className="px-6 -mt-8">
+      <div ref={contentRef} className="px-6 -mt-8">
         {error && (
           <div className="mb-4 p-4 rounded-xl bg-destructive/10 border border-destructive/30 flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-destructive" />

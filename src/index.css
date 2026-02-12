@@ -264,6 +264,63 @@
     transform: translateY(0);
   }
 
+  /* Magnetic circle-follow-cursor button */
+  .magnetic-btn {
+    @apply relative overflow-hidden px-6 py-3 rounded-xl font-semibold text-primary-foreground transition-all duration-200 cursor-pointer;
+    background: var(--gradient-primary);
+  }
+
+  .magnetic-btn:hover {
+    @apply opacity-95;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .magnetic-btn:active {
+    transform: translateY(0);
+  }
+
+  .magnetic-btn__circle {
+    @apply absolute pointer-events-none rounded-full;
+    width: 200px;
+    height: 200px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 0.45s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .magnetic-btn:hover .magnetic-btn__circle {
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .magnetic-btn__content {
+    @apply relative z-10 flex items-center justify-center gap-2;
+  }
+
+  /* Leaflet live-pulse ring animation */
+  .live-pulse {
+    animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  @keyframes pulse-ring {
+    0%, 100% { opacity: 0.5; r: 18; }
+    50%      { opacity: 0.15; r: 28; }
+  }
+
+  /* Animated route dash */
+  .route-line-animated {
+    animation: route-dash 1.5s linear infinite;
+  }
+  @keyframes route-dash {
+    to { stroke-dashoffset: -20; }
+  }
+
+  /* Leaflet dest marker reset */
+  .dest-marker {
+    background: transparent !important;
+    border: none !important;
+  }
+
   .btn-secondary {
     @apply px-6 py-3 rounded-xl font-semibold bg-secondary text-secondary-foreground transition-all duration-200;
   }

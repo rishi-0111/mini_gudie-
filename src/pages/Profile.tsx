@@ -14,11 +14,15 @@ import {
   Settings,
   HelpCircle,
   LogOut,
+  Camera,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 import FloatingSOS from "@/components/FloatingSOS";
 import { useLanguage, Language } from "@/contexts/LanguageContext";
+import { useUser } from "@/contexts/UserContext";
+import AvatarPicker from "@/components/AvatarPicker";
+import DarkModeToggle from "@/components/DarkModeToggle";
 
 interface EmergencyContact {
   id: string;
@@ -31,12 +35,10 @@ interface EmergencyContact {
 const Profile = () => {
   const { toast } = useToast();
   const { t, language, setLanguage, languageNames, availableLanguages } = useLanguage();
-  const [userData, setUserData] = useState({
-    name: "John Traveler",
-    phone: "+91 98765 43210",
-  });
+  const { name: userName, phone: userPhone, avatar, setName, setPhone, setAvatar } = useUser();
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState(userData);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [editForm, setEditForm] = useState({ name: userName, phone: userPhone });
   const [showLanguages, setShowLanguages] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
   const [newContact, setNewContact] = useState({ name: "", phone: "", relation: "" });
@@ -45,8 +47,14 @@ const Profile = () => {
     { id: "2", name: "Dad", phone: "+91 98765 00002", relation: "Father", isPrimary: false },
   ]);
 
+  const handleStartEdit = () => {
+    setEditForm({ name: userName, phone: userPhone });
+    setIsEditing(true);
+  };
+
   const handleSaveProfile = () => {
-    setUserData(editForm);
+    setName(editForm.name);
+    setPhone(editForm.phone);
     setIsEditing(false);
     toast({
       title: t.save,
@@ -127,15 +135,21 @@ const Profile = () => {
 
         {/* Profile Card */}
         <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-primary-foreground/20 flex items-center justify-center">
-            <User className="w-10 h-10 text-primary-foreground" />
-          </div>
+          <button
+            onClick={() => setShowAvatarPicker(true)}
+            className="relative w-20 h-20 rounded-full bg-primary-foreground/20 flex items-center justify-center group"
+          >
+            <span className="text-4xl">{avatar}</span>
+            <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Camera className="w-5 h-5 text-white" />
+            </div>
+          </button>
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-primary-foreground">{userData.name}</h2>
-            <p className="text-primary-foreground/80">{userData.phone}</p>
+            <h2 className="text-xl font-bold text-primary-foreground">{userName}</h2>
+            <p className="text-primary-foreground/80">{userPhone || "No phone set"}</p>
           </div>
           <button
-            onClick={() => setIsEditing(true)}
+            onClick={handleStartEdit}
             className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center"
           >
             <Edit2 className="w-5 h-5 text-primary-foreground" />
@@ -144,6 +158,15 @@ const Profile = () => {
       </div>
 
       <div className="px-6 -mt-8 space-y-6">
+        {/* Avatar Picker */}
+        {showAvatarPicker && (
+          <AvatarPicker
+            selected={avatar}
+            onSelect={setAvatar}
+            onClose={() => setShowAvatarPicker(false)}
+          />
+        )}
+
         {/* Edit Profile Modal */}
         {isEditing && (
           <div className="travel-card animate-scale-in">
@@ -319,6 +342,11 @@ const Profile = () => {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Dark Mode Toggle */}
+        <div className="travel-card">
+          <DarkModeToggle />
         </div>
 
         {/* Other Settings */}
