@@ -332,17 +332,17 @@ const Home = () => {
   };
 
   const categories = [
-    { icon: Building2, label: t.temples, color: "bg-orange-100 text-orange-600" },
-    { icon: Stethoscope, label: t.hospitals, color: "bg-red-100 text-red-600" },
-    { icon: Siren, label: t.emergency, color: "bg-rose-100 text-rose-600" },
-    { icon: Mountain, label: t.hiddenSpots, color: "bg-emerald-100 text-emerald-600" },
-    { icon: Car, label: t.transport, color: "bg-blue-100 text-blue-600" },
-    { icon: Hotel, label: t.hostels, color: "bg-purple-100 text-purple-600" },
+    { icon: Building2, label: t.temples, color: "bg-orange-500", to: "/devotional" },
+    { icon: Stethoscope, label: t.hospitals, color: "bg-blue-500", to: "/explore?cat=hospital" },
+    { icon: Siren, label: t.emergency, color: "bg-red-500", to: "/explore?cat=emergency" },
+    { icon: Sparkles, label: t.hiddenSpots, color: "bg-accent", to: "/discover" },
+    { icon: Hotel, label: t.hostels, color: "bg-green-500", to: "/explore?cat=hostel" },
+    { icon: Car, label: t.transport, color: "bg-purple-500", to: "/explore?cat=transport" },
   ];
 
   const quickActions = [
     { icon: Map, label: t.exploreMap, href: "/explore" },
-    { icon: Calendar, label: t.planTrip, href: "/trip-planner" },
+    { icon: Calendar, label: t.planTrip, href: "/smart-trip" },
     { icon: ShoppingBag, label: t.booking, href: "/booking" },
   ];
 
@@ -391,14 +391,12 @@ const Home = () => {
           </div>
           <button
             onClick={handleLocationToggle}
-            className={`w-14 h-8 rounded-full transition-all duration-300 ${
-              locationEnabled ? "bg-success" : "bg-primary-foreground/30"
-            }`}
+            className={`w-14 h-8 rounded-full transition-all duration-300 ${locationEnabled ? "bg-success" : "bg-primary-foreground/30"
+              }`}
           >
             <div
-              className={`w-6 h-6 rounded-full bg-primary-foreground transition-transform duration-300 ${
-                locationEnabled ? "translate-x-7" : "translate-x-1"
-              }`}
+              className={`w-6 h-6 rounded-full bg-primary-foreground transition-transform duration-300 ${locationEnabled ? "translate-x-7" : "translate-x-1"
+                }`}
             />
           </button>
         </div>
@@ -538,11 +536,10 @@ const Home = () => {
         <button
           ref={voiceBtnRef}
           onClick={handleVoiceAssistant}
-          className={`fixed left-6 bottom-28 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors duration-300 ${
-            isVoiceActive
-              ? "bg-accent shadow-sos"
-              : "bg-gradient-primary shadow-glow"
-          }`}
+          className={`fixed left-6 bottom-28 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors duration-300 ${isVoiceActive
+            ? "bg-accent shadow-sos"
+            : "bg-gradient-primary shadow-glow"
+            }`}
         >
           <Mic className={`w-6 h-6 text-primary-foreground ${isVoiceActive ? "animate-pulse" : ""}`} />
         </button>

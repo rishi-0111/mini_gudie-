@@ -38,7 +38,7 @@ const App = () => (
               <Route path="/test-supabase" element={<TestSupabase />} />
               <Route path="/home" element={<Home />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/trip-planner" element={<TripPlanner />} />
+              <Route path="/trip-planner" element={<SmartTripPlanner />} />
               <Route path="/devotional" element={<DevotionalTripPlanner />} />
               <Route path="/smart-trip" element={<SmartTripPlanner />} />
               <Route path="/explore" element={<Explore />} />

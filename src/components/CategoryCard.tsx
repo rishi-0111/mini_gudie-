@@ -1,4 +1,5 @@
 import { useRef, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { LucideIcon } from "lucide-react";
 import gsap from "gsap";
 
@@ -6,11 +7,11 @@ interface CategoryCardProps {
   icon: LucideIcon;
   label: string;
   colorClass: string;
-  delay?: number;
+  to?: string;
 }
 
-const CategoryCard = ({ icon: Icon, label, colorClass }: CategoryCardProps) => {
-  const cardRef = useRef<HTMLButtonElement>(null);
+const CategoryCard = ({ icon: Icon, label, colorClass, to }: CategoryCardProps) => {
+  const cardRef = useRef<any>(null);
   const iconRef = useRef<HTMLDivElement>(null);
 
   const handleMouseEnter = useCallback(() => {
@@ -57,21 +58,37 @@ const CategoryCard = ({ icon: Icon, label, colorClass }: CategoryCardProps) => {
     }
   }, []);
 
-  return (
-    <button
-      ref={cardRef}
-      className="category-pill"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
-    >
+  const content = (
+    <>
       <div
         ref={iconRef}
         className={`w-12 h-12 rounded-xl ${colorClass} flex items-center justify-center`}
       >
-        <Icon className="w-6 h-6" />
+        <Icon className="w-6 h-6 text-white" />
       </div>
       <span className="text-sm font-medium text-foreground">{label}</span>
+    </>
+  );
+
+  const commonProps = {
+    ref: cardRef,
+    className: "category-pill flex flex-col items-center gap-2",
+    onMouseEnter: handleMouseEnter,
+    onMouseLeave: handleMouseLeave,
+    onClick: handleClick,
+  };
+
+  if (to) {
+    return (
+      <Link to={to} {...commonProps}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button {...commonProps}>
+      {content}
     </button>
   );
 };

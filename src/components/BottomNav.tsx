@@ -13,7 +13,7 @@ const BottomNav = () => {
   const navItems = [
     { icon: Home, label: t.home, href: "/home" },
     { icon: Map, label: t.explore, href: "/explore" },
-    { icon: Calendar, label: t.trips, href: "/trip-planner" },
+    { icon: Calendar, label: t.trips, href: "/smart-trip" },
     { icon: User, label: t.profile, href: "/profile" },
   ];
 
@@ -58,11 +58,10 @@ const BottomNav = () => {
               to={item.href}
               ref={(el) => { itemRefs.current[index] = el; }}
               onClick={() => handleTap(index)}
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-colors duration-200 ${
-                isActive
+              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-colors duration-200 ${isActive
                   ? "text-primary bg-primary/10"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               <item.icon className={`w-6 h-6 transition-transform ${isActive ? "scale-110" : ""}`} />
               <span className="text-xs font-medium">{item.label}</span>
