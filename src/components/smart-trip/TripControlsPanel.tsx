@@ -15,6 +15,10 @@ import CityAutocomplete from "./CityAutocomplete";
 export interface TripInputs {
   fromCity: string;
   toCity: string;
+  fromLat: number;
+  fromLng: number;
+  toLat: number;
+  toLng: number;
   budget: number;
   days: number;
   date: string;
@@ -30,6 +34,7 @@ interface TripControlsPanelProps {
   onChange: (v: TripInputs) => void;
   flightAvailable?: boolean;
   actualDistance?: number;
+  distanceLoading?: boolean;
 }
 
 const TRANSPORT_MODES = [
@@ -49,7 +54,7 @@ function formatDuration(km: number, speed: number): string {
   return m > 0 ? `~${h}h ${m}m` : `~${h}h`;
 }
 
-export default function TripControlsPanel({ values, onChange, flightAvailable, actualDistance }: TripControlsPanelProps) {
+export default function TripControlsPanel({ values, onChange, flightAvailable, actualDistance, distanceLoading }: TripControlsPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,7 +81,9 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
   const estPerPersonDay = Math.round(values.budget / Math.max(1, values.persons) / Math.max(1, values.days));
 
   // Use actual distance from API when available, otherwise the slider value
-  const displayDistance = actualDistance || values.distance;
+  const displayDistance = actualDistance ?? values.distance;
+  const hasBothCities = values.fromCity.trim().length >= 2 && values.toCity.trim().length >= 2;
+  const distanceKnown = actualDistance != null;
 
   // Auto-recommend transport based on distance
   const autoRecommended = useMemo(() => {
@@ -92,19 +99,41 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
       <div className="ctrl-section grid grid-cols-2 gap-3 relative" style={{ zIndex: 50 }}>
         <CityAutocomplete
           value={values.fromCity}
-          onChange={(v) => set({ fromCity: v })}
+          onChange={(v, lat, lng) => set({ fromCity: v, fromLat: lat || 0, fromLng: lng || 0 })}
           placeholder="Current Location"
           icon={<MapPin className="w-3 h-3" />}
           label="From"
         />
         <CityAutocomplete
           value={values.toCity}
-          onChange={(v) => set({ toCity: v })}
+          onChange={(v, lat, lng) => set({ toCity: v, toLat: lat || 0, toLng: lng || 0 })}
           placeholder="e.g. Jaipur"
           icon={<Compass className="w-3 h-3" />}
           label="To"
         />
       </div>
+
+      {/* Live distance indicator */}
+      {hasBothCities && (
+        <div className="ctrl-section flex items-center gap-2 px-1">
+          {distanceLoading ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="w-3 h-3 border-2 border-primary/50 border-t-primary rounded-full animate-spin" />
+              Calculating distance & checking flights...
+            </div>
+          ) : distanceKnown ? (
+            <div className="flex items-center gap-2 text-xs font-medium text-primary">
+              <MapPin className="w-3 h-3" />
+              {values.fromCity} → {values.toCity}: {Math.round(actualDistance!)} km
+              {flightAvailable === true && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-[10px] font-semibold">
+                  ✈️ Flights available
+                </span>
+              )}
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Budget Slider (input + drag) */}
       <div className="ctrl-section glass-card p-4 rounded-2xl relative" style={{ zIndex: 1 }}>
@@ -231,10 +260,15 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
       <div className="ctrl-section glass-card p-4 rounded-2xl">
         <label className="text-xs font-medium text-muted-foreground mb-3 block">
           🚀 Mode of Transport
+          {distanceKnown && (
+            <span className="ml-2 text-primary font-semibold">
+              ({Math.round(displayDistance)} km)
+            </span>
+          )}
         </label>
         <div className="flex gap-2 flex-wrap">
           {TRANSPORT_MODES
-            .filter((m) => m.id !== "flight" || flightAvailable !== false)
+            .filter((m) => m.id !== "flight" || flightAvailable === true)
             .map((m) => (
             <TransportBtn
               key={m.id}
@@ -244,12 +278,13 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
               distance={displayDistance}
               active={values.transportMode === m.id}
               recommended={autoRecommended === m.id && values.transportMode === "auto"}
+              showDuration={distanceKnown}
               onClick={() => set({ transportMode: m.id })}
             />
           ))}
         </div>
         {/* Duration callout for selected mode */}
-        {values.transportMode !== "auto" && (
+        {values.transportMode !== "auto" && distanceKnown && (
           <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
             <Clock className="w-3 h-3" />
             <span>
@@ -261,6 +296,17 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
                 )}
               </strong>
             </span>
+          </div>
+        )}
+        {values.transportMode !== "auto" && !distanceKnown && hasBothCities && distanceLoading && (
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="w-3 h-3 border-2 border-muted-foreground/40 border-t-primary rounded-full animate-spin" />
+            Calculating travel time...
+          </div>
+        )}
+        {!hasBothCities && (
+          <div className="mt-2 text-xs text-muted-foreground/60 italic">
+            Enter From & To cities to see travel times
           </div>
         )}
       </div>
@@ -302,6 +348,7 @@ function TransportBtn({
   distance,
   active,
   recommended,
+  showDuration = true,
   onClick,
 }: {
   icon: string;
@@ -310,6 +357,7 @@ function TransportBtn({
   distance: number;
   active: boolean;
   recommended: boolean;
+  showDuration?: boolean;
   onClick: () => void;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
@@ -352,7 +400,7 @@ function TransportBtn({
         </span>
         {/* Duration/distance badge */}
         <span className={`text-[10px] leading-tight ${active ? "text-primary/80" : "text-muted-foreground/60"}`}>
-          {dur}
+          {showDuration ? dur : "—"}
         </span>
       </button>
       {recommended && (

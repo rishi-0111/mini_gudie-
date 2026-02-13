@@ -354,18 +354,32 @@ async def train_options(
 async def city_distance(
     from_city: str = Query(...),
     to_city: str = Query(...),
+    from_lat: float = Query(0),
+    from_lng: float = Query(0),
+    to_lat: float = Query(0),
+    to_lng: float = Query(0),
 ):
-    """Geocode two cities and return haversine distance + flight availability."""
+    """Geocode two cities (or use provided coords) and return haversine distance + flight availability."""
     try:
         from step10_trip_planner import geocode
 
-        from_coords = await geocode(from_city)
-        to_coords = await geocode(to_city)
-        if not from_coords or not to_coords:
-            return {"error": "Could not geocode one or both cities"}
+        # Use provided coordinates if available, else geocode
+        if from_lat != 0 and from_lng != 0:
+            pass
+        else:
+            from_coords = await geocode(from_city)
+            if from_coords:
+                from_lat, from_lng = from_coords
 
-        from_lat, from_lng = from_coords
-        to_lat, to_lng = to_coords
+        if to_lat != 0 and to_lng != 0:
+            pass
+        else:
+            to_coords = await geocode(to_city)
+            if to_coords:
+                to_lat, to_lng = to_coords
+
+        if from_lat == 0 or to_lat == 0:
+            return {"error": "Could not geocode one or both cities"}
         R = 6371
         p1, p2 = math.radians(from_lat), math.radians(to_lat)
         dp = math.radians(to_lat - from_lat)

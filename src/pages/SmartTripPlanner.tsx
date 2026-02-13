@@ -52,6 +52,7 @@ export default function SmartTripPlanner() {
   const [transportTab, setTransportTab] = useState("bus");
   const [flightAvailable, setFlightAvailable] = useState<boolean | undefined>(undefined);
   const [actualDistance, setActualDistance] = useState<number | undefined>(undefined);
+  const [distanceLoading, setDistanceLoading] = useState(false);
 
   const pageRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
@@ -60,6 +61,10 @@ export default function SmartTripPlanner() {
   const [inputs, setInputs] = useState<TripInputs>({
     fromCity: "",
     toCity: "",
+    fromLat: 0,
+    fromLng: 0,
+    toLat: 0,
+    toLng: 0,
     budget: 5000,
     days: 2,
     date: "",
@@ -83,34 +88,56 @@ export default function SmartTripPlanner() {
   useEffect(() => {
     const from = inputs.fromCity.trim();
     const to = inputs.toCity.trim();
-    if (!from || !to || from === to) {
+    if (!from || !to || from === to || from.length < 2 || to.length < 2) {
       setFlightAvailable(undefined);
       setActualDistance(undefined);
+      setDistanceLoading(false);
       return;
     }
 
     let cancelled = false;
+    setDistanceLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `http://localhost:8000/city-distance?from_city=${encodeURIComponent(from)}&to_city=${encodeURIComponent(to)}`
-        );
+        const API_URL = import.meta.env.VITE_HIDDEN_GEM_API_URL || "http://localhost:8000";
+        const qs = new URLSearchParams({
+          from_city: from,
+          to_city: to,
+          ...(inputs.fromLat ? { from_lat: String(inputs.fromLat), from_lng: String(inputs.fromLng) } : {}),
+          ...(inputs.toLat ? { to_lat: String(inputs.toLat), to_lng: String(inputs.toLng) } : {}),
+        });
+        const res = await fetch(`${API_URL}/city-distance?${qs}`);
         if (cancelled) return;
         const data = await res.json();
         if (!cancelled && !data.error) {
           setFlightAvailable(data.flightAvailable ?? false);
           setActualDistance(data.distance ?? undefined);
+          // Store geocoded coords from API response
+          if (data.fromLat && !inputs.fromLat) {
+            setInputs(prev => ({ ...prev, fromLat: data.fromLat, fromLng: data.fromLng }));
+          }
+          if (data.toLat && !inputs.toLat) {
+            setInputs(prev => ({ ...prev, toLat: data.toLat, toLng: data.toLng }));
+          }
+        } else if (!cancelled && data.error) {
+          setFlightAvailable(false);
+          setActualDistance(undefined);
         }
       } catch {
-        // silently ignore — will fall back to slider distance
+        if (!cancelled) {
+          setFlightAvailable(false);
+          setActualDistance(undefined);
+        }
+      } finally {
+        if (!cancelled) setDistanceLoading(false);
       }
-    }, 600); // debounce 600ms
+    }, 500);
 
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [inputs.fromCity, inputs.toCity]);
+  }, [inputs.fromCity, inputs.toCity, inputs.fromLat, inputs.toLat]);
 
   // Generate plan handler
   const handleGenerate = useCallback(async () => {
@@ -127,12 +154,16 @@ export default function SmartTripPlanner() {
       const result = await generatePlan({
         from_city: inputs.fromCity,
         to_city: inputs.toCity,
+        from_lat: inputs.fromLat || undefined,
+        from_lng: inputs.fromLng || undefined,
+        to_lat: inputs.toLat || undefined,
+        to_lng: inputs.toLng || undefined,
         budget: inputs.budget,
         days: inputs.days,
         persons: inputs.persons,
         date: inputs.date,
         rating: inputs.rating,
-        distance_km: inputs.distance,
+        distance_km: actualDistance || inputs.distance,
         transport_mode: inputs.transportMode,
         hidden_gems: inputs.hiddenGems,
       });
@@ -265,6 +296,7 @@ export default function SmartTripPlanner() {
               onChange={setInputs}
               flightAvailable={flightAvailable}
               actualDistance={actualDistance}
+              distanceLoading={distanceLoading}
             />
 
             {/* Generate Button */}

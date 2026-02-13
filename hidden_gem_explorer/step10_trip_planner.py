@@ -27,6 +27,9 @@ from step7_recommendations import (
     predict_crowd_level,
 )
 
+# ── Google Places API ────────────────────────────────────────────────────────
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "AIzaSyDNDVyQWQj15Ah78zQ9oxxHcAqkrlH4GCU")
+
 # ── Supabase config ─────────────────────────────────────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://bqpkltznzkwvageimfic.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY",
@@ -55,8 +58,8 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 async def geocode(place_name: str) -> Optional[tuple[float, float]]:
     """
     Convert a place name to lat/lng.
-    Tries Nominatim first, then falls back to a built-in dictionary
-    of major Indian cities.
+    Priority: 1) Built-in dictionary  2) Nominatim fallback
+    (Google Geocoding handled client-side via Maps JS API)
     """
     # Built-in fallback for common Indian destinations
     KNOWN_CITIES: dict[str, tuple[float, float]] = {
@@ -166,7 +169,7 @@ async def geocode(place_name: str) -> Optional[tuple[float, float]]:
     if key in KNOWN_CITIES:
         return KNOWN_CITIES[key]
 
-    # Try Nominatim
+    # Fallback: Nominatim
     try:
         url = "https://nominatim.openstreetmap.org/search"
         params = {
@@ -587,14 +590,15 @@ def _cache_set(key: str, results: list[dict]):
 
 async def search_cities(query: str, limit: int = 10) -> list[dict]:
     """
-    Real-time place search for ANY place in India — works like Google Maps.
-    
+    Real-time place search for ANY place in India — cities, towns, villages,
+    landmarks, localities.
+
     Strategy (all run in parallel):
       1. Instant local matches from INDIAN_CITIES (fast, offline)
-      2. Photon geocoder (OSM-based, lenient rate limits, designed for autocomplete)
+      2. Photon / Nominatim (OSM-based geocoding)
       3. Supabase POI database (15K+ places)
-    Falls back to Nominatim if Photon fails.
     Results are cached for 5 minutes.
+    (Google Places search is handled client-side via Maps JS API)
     """
     import asyncio
 
@@ -624,11 +628,10 @@ async def search_cities(query: str, limit: int = 10) -> list[dict]:
                 "_src": "local",
             })
 
-    # ── Source 2: Photon geocoder (primary) + Nominatim (fallback) ───────
+    # ── Source 2: Photon geocoder (primary — OSM-based, fast) ──────────────
     async def _fetch_photon() -> list[dict]:
-        """Query Photon (komoot) — OSM-based, no strict rate limits."""
+        """Query Photon (komoot) — OSM-based fallback."""
         try:
-            # Use raw URL to ensure bbox format is correct
             bbox = "68.0,6.0,98.0,36.0"
             url = f"https://photon.komoot.io/api/?q={query}&limit={limit}&lang=en&bbox={bbox}"
             async with httpx.AsyncClient(timeout=6) as client:
@@ -641,7 +644,6 @@ async def search_cities(query: str, limit: int = 10) -> list[dict]:
                 for feat in features:
                     props = feat.get("properties", {})
                     coords = feat.get("geometry", {}).get("coordinates", [0, 0])
-                    # Filter to only India results
                     country = props.get("country", "")
                     if country and "India" not in country and "india" not in country.lower():
                         continue
@@ -656,7 +658,6 @@ async def search_cities(query: str, limit: int = 10) -> list[dict]:
                     state = props.get("state", "")
                     city = props.get("city", "")
                     osm_type = props.get("osm_value", props.get("type", "place"))
-                    # Build display name
                     parts = [name]
                     if city and city != name:
                         parts.append(city)
@@ -670,7 +671,7 @@ async def search_cities(query: str, limit: int = 10) -> list[dict]:
                         "lat": float(coords[1]),
                         "lng": float(coords[0]),
                         "type": osm_type,
-                        "_priority": 0,
+                        "_priority": 1,
                         "_src": "photon",
                     })
                 return out
@@ -758,7 +759,7 @@ async def search_cities(query: str, limit: int = 10) -> list[dict]:
         except Exception:
             return []
 
-    # ── Run Photon + Supabase in parallel ────────────────────────────────
+    # ── Run Photon + Supabase in parallel ───────────────────────────────
     photon_results, supabase_results = await asyncio.gather(
         _fetch_photon(), _fetch_supabase()
     )
