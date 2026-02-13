@@ -9,51 +9,12 @@ import {
   Sparkles,
   Clock,
   Map as MapIcon,
+  Users,
+  Database,
+  TrendingUp,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-
-interface TripPlan {
-  tripOverview: {
-    from: string;
-    to: string;
-    days: number;
-    transportMode: string;
-    totalBudget: number;
-  };
-  dayWisePlan: Array<{
-    day: number;
-    morning: { place: string; description: string; time: string; cost: number };
-    afternoon: { place: string; description: string; time: string; cost: number };
-    evening: { place: string; description: string; time: string; cost: number };
-    travelDistance: number;
-    dayCost: number;
-  }>;
-  hiddenSpots: Array<{
-    name: string;
-    whySpecial: string;
-    bestTime: string;
-    distance: number;
-  }>;
-  stayRecommendations: Array<{
-    name: string;
-    distance: number;
-    rating: number;
-    pricePerNight: number;
-  }>;
-  foodSpots: Array<{
-    name: string;
-    specialty: string;
-    budgetPerMeal: number;
-  }>;
-  budgetBreakdown: {
-    stay: number;
-    food: number;
-    transport: number;
-    activities: number;
-    buffer: number;
-    total: number;
-  };
-}
+import type { TripPlan } from "@/hooks/useTripPlanner";
 
 interface TripItineraryProps {
   plan: TripPlan;
@@ -269,6 +230,60 @@ const TripItinerary = ({ plan, onEdit }: TripItineraryProps) => {
           </div>
         </div>
       </div>
+
+      {/* Crowd Prediction */}
+      {plan.crowdPrediction && (
+        <div className="travel-card">
+          <h3 className="text-lg font-bold text-primary mb-3 flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            Crowd Prediction
+          </h3>
+          <div className="flex items-center gap-3">
+            <div className={`px-4 py-2 rounded-xl font-semibold text-sm ${
+              plan.crowdPrediction.crowd_level === "low"
+                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                : plan.crowdPrediction.crowd_level === "medium"
+                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+            }`}>
+              {plan.crowdPrediction.crowd_level.toUpperCase()}
+            </div>
+            {plan.crowdPrediction.nearest_poi && (
+              <span className="text-sm text-muted-foreground">
+                Near: {plan.crowdPrediction.nearest_poi}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Data Stats */}
+      {plan.stats && (
+        <div className="travel-card bg-secondary/50">
+          <h3 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
+            <Database className="w-4 h-4" />
+            Data Sources
+          </h3>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <p className="text-lg font-bold text-primary">{plan.stats.total_places_found}</p>
+              <p className="text-xs text-muted-foreground">Places found</p>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-primary">{plan.stats.rated_places}</p>
+              <p className="text-xs text-muted-foreground">Rated matches</p>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-accent">{plan.stats.hidden_gems_found}</p>
+              <p className="text-xs text-muted-foreground">Hidden gems</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground">
+            <TrendingUp className="w-3 h-3" />
+            Powered by Supabase + ML model
+          </div>
+        </div>
+      )}
 
       {/* View on Map Button */}
       <button className="btn-primary w-full flex items-center justify-center gap-2">

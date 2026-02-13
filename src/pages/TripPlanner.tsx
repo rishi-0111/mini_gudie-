@@ -2,68 +2,23 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle, Database, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 import FloatingSOS from "@/components/FloatingSOS";
 import { useLanguage } from "@/contexts/LanguageContext";
 import TripFilters, { TripFilterValues } from "@/components/trip/TripFilters";
 import TripItinerary from "@/components/trip/TripItinerary";
-import { supabase } from "@/integrations/supabase/client";
+import { useTripPlanner } from "@/hooks/useTripPlanner";
 import { ThreeScene, LazyFloatingIconsScene } from "@/components/three/LazyThreeScenes";
 
 gsap.registerPlugin(ScrollTrigger);
 
-interface TripPlan {
-  tripOverview: {
-    from: string;
-    to: string;
-    days: number;
-    transportMode: string;
-    totalBudget: number;
-  };
-  dayWisePlan: Array<{
-    day: number;
-    morning: { place: string; description: string; time: string; cost: number };
-    afternoon: { place: string; description: string; time: string; cost: number };
-    evening: { place: string; description: string; time: string; cost: number };
-    travelDistance: number;
-    dayCost: number;
-  }>;
-  hiddenSpots: Array<{
-    name: string;
-    whySpecial: string;
-    bestTime: string;
-    distance: number;
-  }>;
-  stayRecommendations: Array<{
-    name: string;
-    distance: number;
-    rating: number;
-    pricePerNight: number;
-  }>;
-  foodSpots: Array<{
-    name: string;
-    specialty: string;
-    budgetPerMeal: number;
-  }>;
-  budgetBreakdown: {
-    stay: number;
-    food: number;
-    transport: number;
-    activities: number;
-    buffer: number;
-    total: number;
-  };
-}
-
 const TripPlanner = () => {
   const { toast } = useToast();
-  const { t, language } = useLanguage();
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { t } = useLanguage();
+  const { plan, loading, error: apiError, generateTrip, resetPlan } = useTripPlanner();
   const [showPlan, setShowPlan] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [generatedPlan, setGeneratedPlan] = useState<TripPlan | null>(null);
 
   const pageRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
@@ -71,10 +26,8 @@ const TripPlanner = () => {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Hero entrance (immediate)
       gsap.fromTo(heroRef.current, { y: -60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" });
 
-      // Content area with scrub scroll timeline
       gsap.timeline({
         scrollTrigger: {
           scrub: 1,
@@ -82,11 +35,7 @@ const TripPlanner = () => {
           start: "top 90%",
           end: "bottom 30%",
         },
-      }).fromTo(
-        contentRef.current,
-        { y: 40, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6 }
-      );
+      }).fromTo(contentRef.current, { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 });
     }, pageRef);
     return () => ctx.revert();
   }, []);
@@ -108,19 +57,11 @@ const TripPlanner = () => {
   useEffect(() => {
     if (filterValues.useCurrentLocation && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // In a real app, you'd reverse geocode this to get city name
-          setFilterValues((prev) => ({
-            ...prev,
-            from: "Current Location",
-          }));
+        () => {
+          setFilterValues((prev) => ({ ...prev, from: "Current Location" }));
         },
-        (error) => {
-          console.log("Location error:", error);
-          setFilterValues((prev) => ({
-            ...prev,
-            useCurrentLocation: false,
-          }));
+        () => {
+          setFilterValues((prev) => ({ ...prev, useCurrentLocation: false }));
         }
       );
     }
@@ -136,59 +77,43 @@ const TripPlanner = () => {
       return;
     }
 
-    setIsGenerating(true);
-    setError(null);
-
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("generate-trip", {
-        body: {
-          from: filterValues.useCurrentLocation ? "Current Location" : filterValues.from,
-          destination: filterValues.destination,
-          budget: { min: filterValues.budgetMin, max: filterValues.budgetMax },
-          days: filterValues.days,
-          transportMode: filterValues.transportMode,
-          rating: filterValues.rating,
-          hiddenSpots: filterValues.hiddenSpots,
-          distance: filterValues.distance,
-          language: language,
-        },
+      await generateTrip({
+        from_location: filterValues.useCurrentLocation ? "Current Location" : filterValues.from,
+        destination: filterValues.destination,
+        budget_min: filterValues.budgetMin,
+        budget_max: filterValues.budgetMax,
+        days: filterValues.days,
+        transport_mode: filterValues.transportMode,
+        rating: filterValues.rating,
+        hidden_spots: filterValues.hiddenSpots,
+        distance: filterValues.distance,
       });
 
-      if (fnError) {
-        throw new Error(fnError.message);
-      }
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      setGeneratedPlan(data);
       setShowPlan(true);
-
       toast({
         title: "Trip Plan Generated! ✨",
-        description: "Your personalized AI itinerary is ready",
+        description: "Your personalized itinerary is ready — powered by real data & ML",
       });
     } catch (err: any) {
-      console.error("Trip generation error:", err);
-      setError(err.message || "Failed to generate trip plan");
       toast({
         title: "Generation Failed",
-        description: err.message || "Please try again later",
+        description: err.message || "Please try again",
         variant: "destructive",
       });
-    } finally {
-      setIsGenerating(false);
     }
   };
 
   const handleFilterChange = (newValues: TripFilterValues) => {
     setFilterValues(newValues);
-    // Reset plan when filters change significantly
     if (showPlan) {
       setShowPlan(false);
-      setGeneratedPlan(null);
+      resetPlan();
     }
+  };
+
+  const handleEdit = () => {
+    setShowPlan(false);
   };
 
   return (
@@ -210,13 +135,22 @@ const TripPlanner = () => {
           <h1 className="text-xl font-bold text-primary-foreground">{t.tripPlanner}</h1>
         </div>
         <p className="text-primary-foreground/80 relative z-10">{t.generateItinerary}</p>
+        {/* Data source badges */}
+        <div className="flex items-center gap-2 mt-3 relative z-10">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-foreground/10 text-primary-foreground/90 text-xs font-medium backdrop-blur-sm">
+            <Database className="w-3 h-3" /> 6,300+ real places
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-foreground/10 text-primary-foreground/90 text-xs font-medium backdrop-blur-sm">
+            <Sparkles className="w-3 h-3" /> ML-powered
+          </span>
+        </div>
       </div>
 
       <div ref={contentRef} className="px-6 -mt-8">
-        {error && (
+        {apiError && (
           <div className="mb-4 p-4 rounded-xl bg-destructive/10 border border-destructive/30 flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-destructive" />
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-destructive">{apiError}</p>
           </div>
         )}
 
@@ -225,12 +159,10 @@ const TripPlanner = () => {
             values={filterValues}
             onChange={handleFilterChange}
             onGenerate={handleGeneratePlan}
-            isGenerating={isGenerating}
+            isGenerating={loading}
           />
         ) : (
-          generatedPlan && (
-            <TripItinerary plan={generatedPlan} onEdit={() => setShowPlan(false)} />
-          )
+          plan && <TripItinerary plan={plan} onEdit={handleEdit} />
         )}
       </div>
 

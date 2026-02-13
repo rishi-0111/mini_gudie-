@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiniGuide — Navigation</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    /* ------------------------------------------------------------------ */
+    /* Reset & base                                                       */
+    /* ------------------------------------------------------------------ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3a;
+      --accent: #6c63ff;
+      --accent2: #00d4aa;
+      --text: #e4e4e7;
+      --muted: #9ca3af;
+      --danger: #ef4444;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Header                                                             */
+    /* ------------------------------------------------------------------ */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      z-index: 1000;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--danger);
+      transition: background 0.3s;
+    }
+    .status-dot.connected { background: var(--accent2); }
+
+    #status-text {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Map                                                                */
+    /* ------------------------------------------------------------------ */
+    #map {
+      flex: 1;
+      z-index: 1;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Control Panel (bottom)                                             */
+    /* ------------------------------------------------------------------ */
+    .panel {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 16px 20px;
+      z-index: 1000;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .input-group label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .input-group input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-group input:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    button:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      color: #fff;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--accent2), #10b981);
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Info bar                                                           */
+    /* ------------------------------------------------------------------ */
+    #info-bar {
+      display: none;
+      padding: 10px 20px;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      gap: 20px;
+    }
+    #info-bar.visible {
+      display: flex;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .info-item .label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .info-item .value {
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .traffic-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .traffic-badge.heavy    { background: #ef444433; color: #ef4444; }
+    .traffic-badge.moderate { background: #f59e0b33; color: #f59e0b; }
+    .traffic-badge.light    { background: #10b98133; color: #10b981; }
+    .traffic-badge.free-flow { background: #6c63ff33; color: #6c63ff; }
+
+    /* ------------------------------------------------------------------ */
+    /* Steps panel                                                        */
+    /* ------------------------------------------------------------------ */
+    #steps-panel {
+      display: none;
+      max-height: 180px;
+      overflow-y: auto;
+      padding: 8px 20px;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+    }
+    #steps-panel.visible { display: block; }
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .step-icon {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface);
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .step-dist {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Toast                                                              */
+    /* ------------------------------------------------------------------ */
+    #toast {
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      color: var(--text);
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 9999;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Click prompt on map                                                */
+    /* ------------------------------------------------------------------ */
+    .click-hint {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 1000;
+      display: none;
+    }
+    .click-hint.visible { display: block; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <h1>🧭 MiniGuide Nav</h1>
+    <div class="status-dot" id="ws-dot"></div>
+    <span id="status-text">Disconnected</span>
+  </header>
+
+  <!-- Map -->
+  <div id="map"></div>
+
+  <!-- Click hint overlay -->
+  <div class="click-hint" id="click-hint">🖱️ Click on the map to set points, or enter coordinates below</div>
+
+  <!-- Route Info Bar -->
+  <div id="info-bar">
+    <div class="info-item">
+      <span class="label">Distance</span>
+      <span class="value" id="info-distance">—</span>
+    </div>
+    <div class="info-item">
+      <span class="label">ETA</span>
+      <span class="value" id="info-eta">—</span>
+    </div>
+    <div class="info-item">
+      <span class="label">Traffic</span>
+      <span class="value" id="info-traffic">—</span>
+    </div>
+    <div class="info-item">
+      <span class="label">Alt Routes</span>
+      <span class="value" id="info-alts">—</span>
+    </div>
+  </div>
+
+  <!-- Turn-by-turn Steps -->
+  <div id="steps-panel"></div>
+
+  <!-- Control Panel -->
+  <div class="panel">
+    <div class="input-row">
+      <div class="input-group">
+        <label>Start Lat</label>
+        <input type="number" step="any" id="start-lat" placeholder="28.6139" />
+      </div>
+      <div class="input-group">
+        <label>Start Lng</label>
+        <input type="number" step="any" id="start-lng" placeholder="77.2090" />
+      </div>
+      <div class="input-group">
+        <label>End Lat</label>
+        <input type="number" step="any" id="end-lat" placeholder="28.5355" />
+      </div>
+      <div class="input-group">
+        <label>End Lng</label>
+        <input type="number" step="any" id="end-lng" placeholder="77.2910" />
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="btn-route">🗺️ Get Route</button>
+      <button class="btn-success" id="btn-navigate">▶️ Start Nav</button>
+      <button class="btn-danger"  id="btn-stop" style="display:none">⏹ Stop</button>
+      <button class="btn-outline" id="btn-simulate">🚗 Simulate Drive</button>
+      <button class="btn-outline" id="btn-locate">📍 My Location</button>
+      <button class="btn-outline" id="btn-pick">🖱️ Pick on Map</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

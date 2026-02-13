@@ -12,33 +12,46 @@ import {
   Leaf,
   Shield,
   Loader2,
+  Mountain,
+  Wallet,
+  BarChart3,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 import FloatingSOS from "@/components/FloatingSOS";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ThreeScene, LazyParticleField } from "@/components/three/LazyThreeScenes";
+import { useHiddenGems, type DiscoverSpot, type CrowdPrediction } from "@/hooks/useHiddenGems";
 
 gsap.registerPlugin(ScrollTrigger);
 
-interface HiddenSpot {
-  id: string;
-  name: string;
-  description: string;
-  rating: number;
-  visitors: string;
-  bestTime: string;
-  safetyScore: number;
-  image: string;
-  tags: string[];
-}
+type DiscoverMode = "nearby" | "temples" | "weekend" | "budget";
+
+const MODE_CONFIG: Record<DiscoverMode, { label: string; icon: React.ReactNode; description: string }> = {
+  nearby: { label: "Hidden Gems", icon: <Sparkles className="w-4 h-4" />, description: "AI-ranked hidden spots near you" },
+  temples: { label: "Temples", icon: <span className="text-sm">🛕</span>, description: "Secret worship places off the beaten path" },
+  weekend: { label: "Weekend", icon: <Mountain className="w-4 h-4" />, description: "Quiet weekend getaway escapes" },
+  budget: { label: "Budget", icon: <Wallet className="w-4 h-4" />, description: "Budget-friendly hidden experiences" },
+};
 
 const Discover = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
-  const [isLoading, setIsLoading] = useState(false);
   const [destination, setDestination] = useState("");
-  const [spots, setSpots] = useState<HiddenSpot[]>([]);
+  const [mode, setMode] = useState<DiscoverMode>("nearby");
+  const [crowdInfo, setCrowdInfo] = useState<CrowdPrediction | null>(null);
+
+  // Hidden Gem API hook
+  const {
+    spots,
+    loading: isLoading,
+    error: apiError,
+    discoverNearby,
+    discoverTemples,
+    discoverWeekend,
+    discoverBudget,
+    predictCrowd,
+  } = useHiddenGems();
 
   const pageRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
@@ -94,52 +107,75 @@ const Discover = () => {
       return;
     }
 
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Geocode destination using Nominatim
+    try {
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}&limit=1&countrycodes=in`
+      );
+      const geoData = await geoRes.json();
+      if (!geoData.length) {
+        toast({
+          title: "Location not found",
+          description: "Could not find that destination. Try a city name like 'Rishikesh' or 'Jaipur'.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    const mockSpots: HiddenSpot[] = [
-      {
-        id: "1",
-        name: "Moonlight Lake",
-        description: "A serene lake hidden in the mountains, perfect for stargazing and peaceful reflection away from tourist crowds.",
-        rating: 4.9,
-        visitors: "~50/day",
-        bestTime: "Evening",
-        safetyScore: 95,
-        image: "🌙",
-        tags: ["Nature", "Peaceful", "Photography"],
-      },
-      {
-        id: "2",
-        name: "Old Town Artisan Street",
-        description: "A narrow alley with traditional craftsmen creating authentic local art, untouched by commercialization.",
-        rating: 4.7,
-        visitors: "~30/day",
-        bestTime: "Morning",
-        safetyScore: 98,
-        image: "🎨",
-        tags: ["Culture", "Local", "Shopping"],
-      },
-      {
-        id: "3",
-        name: "Forest Tea House",
-        description: "A century-old tea house deep in the forest, serving traditional brews with ancient recipes.",
-        rating: 4.8,
-        visitors: "~20/day",
-        bestTime: "Afternoon",
-        safetyScore: 92,
-        image: "🍵",
-        tags: ["Food", "Traditional", "Relaxing"],
-      },
-    ];
+      const lat = parseFloat(geoData[0].lat);
+      const lon = parseFloat(geoData[0].lon);
 
-    setSpots(mockSpots);
-    setIsLoading(false);
-    toast({
-      title: t.hiddenSpots + " Found! 🎉",
-      description: `Discovered ${mockSpots.length} AI-recommended hidden gems`,
-    });
+      // Call appropriate endpoint based on mode
+      let results: DiscoverSpot[] = [];
+      switch (mode) {
+        case "nearby":
+          results = await discoverNearby(lat, lon, 50, 10);
+          break;
+        case "temples":
+          results = await discoverTemples(lat, lon, 100, 10);
+          break;
+        case "weekend":
+          results = await discoverWeekend(lat, lon, 150, 10);
+          break;
+        case "budget":
+          results = await discoverBudget(lat, lon, 100, 10);
+          break;
+      }
+
+      // Also fetch crowd prediction for the location
+      const crowd = await predictCrowd(lat, lon, new Date().getMonth() + 1);
+      setCrowdInfo(crowd);
+
+      if (results.length > 0) {
+        toast({
+          title: t.hiddenSpots + " Found! 🎉",
+          description: `Discovered ${results.length} AI-recommended hidden gems near ${destination}`,
+        });
+      } else {
+        toast({
+          title: "No hidden gems found",
+          description: `Try a larger area or different mode. The ML model has ${mode === "temples" ? "temple" : "hidden spot"} data mainly near major cities.`,
+        });
+      }
+    } catch (e: any) {
+      toast({
+        title: "Discovery failed",
+        description: e.message || "Something went wrong",
+        variant: "destructive",
+      });
+    }
   };
+
+  // Show API error as toast
+  useEffect(() => {
+    if (apiError) {
+      toast({
+        title: "Hidden Gem API Error",
+        description: apiError,
+        variant: "destructive",
+      });
+    }
+  }, [apiError, toast]);
 
   const getSafetyColor = (score: number) => {
     if (score >= 90) return "text-success";
@@ -182,16 +218,43 @@ const Discover = () => {
         {/* Search Card */}
         <div ref={searchCardRef} className="travel-card mb-6">
           <h3 className="font-semibold mb-4">{t.search} {t.hiddenSpots}</h3>
+
+          {/* Mode Selector */}
+          <div className="flex gap-2 overflow-x-auto pb-3 mb-4 no-scrollbar">
+            {(Object.entries(MODE_CONFIG) as [DiscoverMode, typeof MODE_CONFIG[DiscoverMode]][]).map(
+              ([key, cfg]) => (
+                <button
+                  key={key}
+                  onClick={() => setMode(key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                    mode === key
+                      ? "bg-accent text-accent-foreground shadow-sm"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {cfg.icon}
+                  {cfg.label}
+                </button>
+              )
+            )}
+          </div>
+
           <div className="relative mb-4">
             <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
               type="text"
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
-              placeholder={t.destination}
+              placeholder={`${t.destination} (e.g. Rishikesh, Jaipur, Goa)`}
               className="input-travel pl-12"
+              onKeyDown={(e) => e.key === "Enter" && handleDiscover()}
             />
           </div>
+
+          <p className="text-xs text-muted-foreground mb-3">
+            {MODE_CONFIG[mode].description}
+          </p>
+
           <button
             onClick={handleDiscover}
             disabled={isLoading}
@@ -205,14 +268,49 @@ const Discover = () => {
             ) : (
               <>
                 <Sparkles className="w-5 h-5" />
-                {t.discover} {t.hiddenSpots}
+                {t.discover} {MODE_CONFIG[mode].label}
               </>
             )}
           </button>
           <p className="text-xs text-muted-foreground mt-3 text-center">
-            AI considers {t.budget}, safety, season & local popularity
+            Powered by ML · RandomForest model · 49K+ POIs analyzed
           </p>
         </div>
+
+        {/* Crowd Prediction Banner */}
+        {crowdInfo && (
+          <div className="travel-card mb-4 flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl ${
+              crowdInfo.crowd_level === "low"
+                ? "bg-green-100 dark:bg-green-900/30"
+                : crowdInfo.crowd_level === "medium"
+                ? "bg-yellow-100 dark:bg-yellow-900/30"
+                : "bg-red-100 dark:bg-red-900/30"
+            }`}>
+              <BarChart3 className={`w-6 h-6 ${
+                crowdInfo.crowd_level === "low"
+                  ? "text-green-600"
+                  : crowdInfo.crowd_level === "medium"
+                  ? "text-yellow-600"
+                  : "text-red-600"
+              }`} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold">
+                Crowd Level: <span className={`uppercase ${
+                  crowdInfo.crowd_level === "low"
+                    ? "text-green-600"
+                    : crowdInfo.crowd_level === "medium"
+                    ? "text-yellow-600"
+                    : "text-red-600"
+                }`}>{crowdInfo.crowd_level}</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Near {crowdInfo.nearest_poi} · {crowdInfo.hotels_nearby} hotels · {crowdInfo.metro_nearby} metro · Season ×{crowdInfo.festival_multiplier}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Results */}
         {spots.length > 0 && (
@@ -260,10 +358,10 @@ const Discover = () => {
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-border">
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Visitors</p>
-                      <p className="text-sm font-medium">{spot.visitors}</p>
+                      <p className="text-xs text-muted-foreground">Distance</p>
+                      <p className="text-sm font-medium">{spot.distance}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -281,6 +379,20 @@ const Discover = () => {
                         {spot.safetyScore}%
                       </p>
                     </div>
+                  </div>
+                </div>
+
+                {/* Hidden Gem Score bar */}
+                <div className="mt-3 pt-3 border-t border-border">
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-muted-foreground">Hidden Gem Score</span>
+                    <span className="font-semibold text-accent">{spot.hiddenGemScore.toFixed(0)}/100</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-secondary overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-accent to-primary transition-all"
+                      style={{ width: `${spot.hiddenGemScore}%` }}
+                    />
                   </div>
                 </div>
               </div>

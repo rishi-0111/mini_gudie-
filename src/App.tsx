@@ -17,6 +17,8 @@ import Booking from "./pages/Booking";
 import AuthCallback from "./pages/AuthCallback";
 import TestSupabase from "./pages/TestSupabase";
 import NotFound from "./pages/NotFound";
+import DevotionalTripPlanner from "./pages/DevotionalTripPlanner";
+import SmartTripPlanner from "./pages/SmartTripPlanner";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +39,8 @@ const App = () => (
               <Route path="/home" element={<Home />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/trip-planner" element={<TripPlanner />} />
+              <Route path="/devotional" element={<DevotionalTripPlanner />} />
+              <Route path="/smart-trip" element={<SmartTripPlanner />} />
               <Route path="/explore" element={<Explore />} />
               <Route path="/discover" element={<Discover />} />
               <Route path="/booking" element={<Booking />} />

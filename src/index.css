@@ -186,6 +186,16 @@
     box-shadow: var(--shadow-lg);
   }
 
+  /* Glassmorphism card */
+  .glass-card {
+    @apply rounded-2xl p-4 transition-all duration-300;
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--border) / 0.3);
+    box-shadow: var(--shadow-md);
+  }
+
   /* Category pill */
   .category-pill {
     @apply flex flex-col items-center gap-2 p-4 rounded-2xl bg-secondary transition-all duration-200;

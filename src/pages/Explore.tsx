@@ -21,21 +21,10 @@ import FloatingSOS from "@/components/FloatingSOS";
 import InteractiveMap from "@/components/InteractiveMap";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { usePlaces, type ExplorePlace } from "@/hooks/usePlaces";
 import { ThreeScene, LazyFloatingIconsScene } from "@/components/three/LazyThreeScenes";
 
 gsap.registerPlugin(ScrollTrigger);
-
-interface Place {
-  id: string;
-  name: string;
-  type: string;
-  rating: number;
-  distance: string;
-  image: string;
-  isHiddenGem: boolean;
-  lat: number;
-  lng: number;
-}
 
 const Explore = () => {
   const { t } = useLanguage();
@@ -44,10 +33,20 @@ const Explore = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
 
+  // Supabase places hook (auto-fetches + realtime subscriptions)
+  const {
+    places: supabasePlaces,
+    loading: supabaseLoading,
+    error: supabaseError,
+    fetchPlaces,
+    fetchNearby,
+    searchPlaces: searchSupabase,
+  } = usePlaces();
+
   // Live location state
   const [liveLocationOn, setLiveLocationOn] = useState(false);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [nearbyPlaces, setNearbyPlaces] = useState<Place[]>([]);
+  const [overpassPlaces, setOverpassPlaces] = useState<ExplorePlace[]>([]);
   const [loadingNearby, setLoadingNearby] = useState(false);
   const watchIdRef = useRef<number | null>(null);
   const mapBlockRef = useRef<HTMLDivElement>(null);
@@ -61,80 +60,34 @@ const Explore = () => {
 
   const filters = [
     { id: "all", label: t.viewAll },
-    { id: "hidden", label: t.hiddenSpots },
-    { id: "temples", label: t.temples },
-    { id: "food", label: "Food" },
-    { id: "nature", label: "Nature" },
+    { id: "hidden", label: "✨ " + t.hiddenSpots },
+    { id: "temples", label: "🛕 " + t.temples },
+    { id: "food", label: "🍽️ Food" },
+    { id: "hotels", label: "🏨 Hotels" },
+    { id: "transport", label: "🚌 Transport" },
+    { id: "emergency", label: "🚨 Emergency" },
+    { id: "landmarks", label: "🏛️ Landmarks" },
+    { id: "nature", label: "🌿 Nature" },
   ];
 
-  const places: Place[] = [
-    {
-      id: "1",
-      name: "Secret Garden Cafe",
-      type: "Cafe",
-      rating: 4.8,
-      distance: "2.5 km",
-      image: "🌿",
-      isHiddenGem: true,
-      lat: 28.6139,
-      lng: 77.2090,
-    },
-    {
-      id: "2",
-      name: "Ancient Sun Temple",
-      type: "Temple",
-      rating: 4.9,
-      distance: "5.2 km",
-      image: "🛕",
-      isHiddenGem: false,
-      lat: 28.6280,
-      lng: 77.2197,
-    },
-    {
-      id: "3",
-      name: "Hidden Valley Viewpoint",
-      type: "Nature",
-      rating: 4.7,
-      distance: "8.1 km",
-      image: "🏔️",
-      isHiddenGem: true,
-      lat: 28.6500,
-      lng: 77.2300,
-    },
-    {
-      id: "4",
-      name: "Local Street Food Market",
-      type: "Food",
-      rating: 4.6,
-      distance: "1.2 km",
-      image: "🍜",
-      isHiddenGem: true,
-      lat: 28.6350,
-      lng: 77.2150,
-    },
-    {
-      id: "5",
-      name: "Riverside Meditation Center",
-      type: "Wellness",
-      rating: 4.9,
-      distance: "6.8 km",
-      image: "🧘",
-      isHiddenGem: false,
-      lat: 28.6400,
-      lng: 77.2400,
-    },
-    {
-      id: "6",
-      name: "Underground Art Gallery",
-      type: "Culture",
-      rating: 4.5,
-      distance: "3.4 km",
-      image: "🎨",
-      isHiddenGem: true,
-      lat: 28.6200,
-      lng: 77.2250,
-    },
-  ];
+  // Filter-to-category mapping for Supabase queries
+  const FILTER_CATEGORY_MAP: Record<string, string | string[] | undefined> = {
+    all: undefined,
+    hidden: "hidden_spot",
+    temples: "temple",
+    food: "restaurant",
+    hotels: "hotel",
+    transport: undefined, // handled client-side for multi-category
+    emergency: undefined, // handled client-side for multi-category
+    landmarks: "landmark",
+    nature: "hidden_spot",
+  };
+
+  // Multi-category filters resolved client-side
+  const FILTER_MULTI: Record<string, string[]> = {
+    transport: ["bus_route", "transport", "metro", "railway"],
+    emergency: ["emergency", "hospital", "police", "fire_station", "pharmacy", "health_centre"],
+  };
 
   // --- Live Location helpers ---
   const startLiveLocation = useCallback(() => {
@@ -160,37 +113,43 @@ const Explore = () => {
       watchIdRef.current = null;
     }
     setUserLocation(null);
-    setNearbyPlaces([]);
+    setOverpassPlaces([]);
   }, []);
 
-  // Toggle handler
+  // Toggle handler — only starts GPS tracking, does NOT switch to map view.
+  // The user must click the Map icon explicitly to see the map.
   const handleLiveToggle = () => {
     const enabling = !liveLocationOn;
     setLiveLocationOn(enabling);
     if (enabling) {
-      setViewMode("map"); // auto-switch to map view
       startLiveLocation();
     } else {
       stopLiveLocation();
     }
   };
 
-  // Fetch nearby POIs from Overpass when user location is acquired
+  // Fetch nearby POIs from Overpass + Supabase when user location is acquired
   useEffect(() => {
     if (!userLocation || !liveLocationOn) return;
     let cancelled = false;
     const [lat, lng] = userLocation;
     const radius = 2000; // 2 km
 
+    // 1. Fetch from Supabase (curated places within radius)
+    fetchNearby(lat, lng, radius / 1000);
+
+    // 2. Fetch from Overpass (OSM community data)
     const query = `
       [out:json][timeout:15];
       (
         node["tourism"](around:${radius},${lat},${lng});
-        node["amenity"~"restaurant|cafe|hospital|pharmacy|bank|place_of_worship"](around:${radius},${lat},${lng});
+        node["amenity"~"restaurant|cafe|hospital|pharmacy|bank|place_of_worship|police|fire_station"](around:${radius},${lat},${lng});
         node["shop"](around:${radius},${lat},${lng});
         node["historic"](around:${radius},${lat},${lng});
+        node["railway"="station"](around:${radius},${lat},${lng});
+        node["station"="subway"](around:${radius},${lat},${lng});
       );
-      out body 40;
+      out body 60;
     `;
 
     setLoadingNearby(true);
@@ -202,7 +161,7 @@ const Explore = () => {
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
-        const mapped: Place[] = (data.elements || []).filter((e: any) => e.tags?.name).map((e: any, i: number) => {
+        const mapped: ExplorePlace[] = (data.elements || []).filter((e: any) => e.tags?.name).map((e: any, i: number) => {
           const tags = e.tags || {};
           const type = tags.tourism || tags.amenity || tags.shop || tags.historic || "place";
           const emoji = getTypeEmoji(type);
@@ -210,21 +169,22 @@ const Explore = () => {
             id: `overpass-${e.id || i}`,
             name: tags.name,
             type: type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, " "),
-            rating: 4.0 + Math.round(Math.random() * 10) / 10, // placeholder
+            rating: 4.0 + Math.round(Math.random() * 10) / 10,
             distance: distanceStr(lat, lng, e.lat, e.lon),
             image: emoji,
             isHiddenGem: !!tags.historic || type === "viewpoint",
             lat: e.lat,
             lng: e.lon,
+            source: "overpass" as const,
           };
         });
-        setNearbyPlaces(mapped);
+        setOverpassPlaces(mapped);
       })
-      .catch(() => { if (!cancelled) setNearbyPlaces([]); })
+      .catch(() => { if (!cancelled) setOverpassPlaces([]); })
       .finally(() => { if (!cancelled) setLoadingNearby(false); });
 
     return () => { cancelled = true; };
-  }, [userLocation, liveLocationOn]);
+  }, [userLocation, liveLocationOn, fetchNearby]);
 
   // GSAP animate map block in/out
   useEffect(() => {
@@ -243,15 +203,63 @@ const Explore = () => {
     return () => { stopLiveLocation(); };
   }, [stopLiveLocation]);
 
-  // Choose which places to show: nearby (live) or static
-  const activePlaces = liveLocationOn && nearbyPlaces.length > 0 ? nearbyPlaces : places;
+  // Re-fetch Supabase places when search query changes (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim()) {
+        searchSupabase(
+          searchQuery,
+          userLocation?.[0],
+          userLocation?.[1]
+        );
+      } else {
+        fetchPlaces(userLocation?.[0], userLocation?.[1]);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery, searchSupabase, fetchPlaces, userLocation]);
 
-  const filteredPlaces = activePlaces.filter((place) => {
+  // Merge Supabase + Overpass places, deduplicating by name
+  const mergedPlaces: ExplorePlace[] = (() => {
+    if (liveLocationOn && userLocation) {
+      // Combine both sources, Supabase places first (higher trust)
+      const seen = new Set<string>();
+      const result: ExplorePlace[] = [];
+      for (const p of supabasePlaces) {
+        const key = p.name.toLowerCase().trim();
+        if (!seen.has(key)) {
+          seen.add(key);
+          result.push(p);
+        }
+      }
+      for (const p of overpassPlaces) {
+        const key = p.name.toLowerCase().trim();
+        if (!seen.has(key)) {
+          seen.add(key);
+          result.push(p);
+        }
+      }
+      return result;
+    }
+    // When not live, show Supabase places only
+    return supabasePlaces;
+  })();
+
+  const filteredPlaces = mergedPlaces.filter((place) => {
     const matchesSearch = !searchQuery || place.name.toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
-    if (selectedFilter === "hidden") return place.isHiddenGem;
     if (selectedFilter === "all") return true;
-    return place.type.toLowerCase().includes(selectedFilter);
+    if (selectedFilter === "hidden") return place.isHiddenGem;
+
+    // Multi-category filters (transport, emergency)
+    if (FILTER_MULTI[selectedFilter]) {
+      const cats = FILTER_MULTI[selectedFilter];
+      const placeType = place.type.toLowerCase().replace(/ /g, "_");
+      return cats.some((c) => placeType.includes(c));
+    }
+
+    // Single-category filter
+    return place.type.toLowerCase().includes(selectedFilter.replace(/s$/, ""));
   });
 
   const mapMarkers = filteredPlaces.map((place) => ({
@@ -403,14 +411,41 @@ const Explore = () => {
 
         {viewMode === "list" ? (
           <div ref={placesListRef} className="space-y-4">
+            {/* Loading state */}
+            {supabaseLoading && filteredPlaces.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-sm">Loading places from database…</p>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!supabaseLoading && filteredPlaces.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+                <MapPin className="w-12 h-12 opacity-30" />
+                <p className="text-sm font-medium">No places found</p>
+                <p className="text-xs text-center max-w-[240px]">
+                  {searchQuery
+                    ? "Try a different search term or clear filters"
+                    : "Turn on live location to discover nearby spots, or add places to your database"}
+                </p>
+              </div>
+            )}
+
             {filteredPlaces.map((place) => (
               <div
                 key={place.id}
                 className="travel-card flex gap-4"
               >
                 {/* Place Image/Emoji */}
-                <div className="w-20 h-20 rounded-xl bg-secondary flex items-center justify-center text-4xl">
+                <div className="w-20 h-20 rounded-xl bg-secondary flex items-center justify-center text-4xl relative">
                   {place.image}
+                  {/* Source indicator */}
+                  {place.source === "supabase" && (
+                    <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center text-[9px] text-primary-foreground font-bold shadow" title="Curated place">
+                      ✓
+                    </span>
+                  )}
                 </div>
 
                 {/* Place Details */}
@@ -425,8 +460,16 @@ const Explore = () => {
                             Hidden
                           </span>
                         )}
+                        {place.verified && (
+                          <span className="flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full" title="Verified">
+                            ✓ Verified
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground">{place.type}</p>
+                      {place.description && (
+                        <p className="text-xs text-muted-foreground/70 line-clamp-1 mt-0.5">{place.description}</p>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 text-sm">
                       <Star className="w-4 h-4 text-warning fill-warning" />
@@ -443,6 +486,16 @@ const Explore = () => {
                       <Clock className="w-4 h-4" />
                       Open now
                     </span>
+                    {place.source === "supabase" && (
+                      <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                        Curated
+                      </span>
+                    )}
+                    {place.source === "overpass" && (
+                      <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                        OSM
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -461,18 +514,30 @@ const Explore = () => {
               </div>
             )}
 
-            {/* Loading nearby spinner */}
-            {loadingNearby && (
+            {/* Loading spinner */}
+            {(loadingNearby || supabaseLoading) && (
               <div className="absolute top-3 right-3 z-[1000] bg-white/90 dark:bg-card/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-md flex items-center gap-2">
                 <Loader2 className="w-4 h-4 text-primary animate-spin" />
                 <span className="text-xs font-medium text-foreground">Finding places…</span>
               </div>
             )}
 
+            {/* Supabase error notice */}
+            {supabaseError && (
+              <div className="absolute top-14 right-3 z-[1000] bg-destructive/90 text-destructive-foreground backdrop-blur-sm px-3 py-1.5 rounded-full shadow-md">
+                <span className="text-xs font-medium">DB: {supabaseError}</span>
+              </div>
+            )}
+
             {/* Nearby places count */}
-            {liveLocationOn && nearbyPlaces.length > 0 && !loadingNearby && (
-              <div className="absolute top-3 right-3 z-[1000] bg-white/90 dark:bg-card/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-md">
-                <span className="text-xs font-semibold text-foreground">{nearbyPlaces.length} places nearby</span>
+            {liveLocationOn && filteredPlaces.length > 0 && !loadingNearby && !supabaseLoading && (
+              <div className="absolute top-3 right-3 z-[1000] bg-white/90 dark:bg-card/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-foreground">{filteredPlaces.length} places nearby</span>
+                {supabasePlaces.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground">
+                    ({supabasePlaces.length} curated)
+                  </span>
+                )}
               </div>
             )}
 
@@ -514,6 +579,8 @@ function getTypeEmoji(type: string): string {
     bank: "🏦", place_of_worship: "🛕", hotel: "🏨", museum: "🏛️",
     attraction: "🎯", viewpoint: "🏔️", artwork: "🎨", guest_house: "🏡",
     shop: "🛍️", supermarket: "🛒", historic: "🏰", monument: "🗿",
+    police: "👮", fire_station: "🚒", station: "🚂", subway: "🚇",
+    bus_stop: "🚌", railway: "🚂", metro: "🚇",
   };
   return map[type.toLowerCase()] || "📍";
 }

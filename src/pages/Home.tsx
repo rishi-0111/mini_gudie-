@@ -24,6 +24,7 @@ import {
   Route,
   Clock,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CategoryCard from "@/components/CategoryCard";
@@ -510,6 +511,28 @@ const Home = () => {
             ))}
           </div>
         </div>
+
+        {/* Hidden Gems Discovery Banner */}
+        <Link
+          to="/discover"
+          className="block mb-8 travel-card bg-gradient-to-r from-accent/10 to-primary/10 border border-accent/20 hover:shadow-lg transition-shadow"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-accent to-primary flex items-center justify-center shadow-glow">
+              <Sparkles className="w-7 h-7 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                Discover Hidden Gems
+                <span className="text-[10px] bg-accent/20 text-accent px-2 py-0.5 rounded-full font-bold">AI</span>
+              </h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                ML-powered hidden spots, temples & weekend escapes
+              </p>
+            </div>
+            <Compass className="w-5 h-5 text-accent" />
+          </div>
+        </Link>
 
         {/* Voice Assistant FAB */}
         <button
