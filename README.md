@@ -1,75 +1,86 @@
-# Mini Gudie
+# ✨ Mini Gudie — Futuristic Smart Travel Assistant
 
-A futuristic travel and safety application built with modern web technologies.
+Mini Gudie is a high-performance, mobile-first travel and safety application designed to help users discover hidden spots, plan trips, and navigate seamlessly using real-time OpenStreetMap (OSM) data.
 
-## Project info
+## 🚀 Key Features
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+### 🗺️ Intelligent Explore Page
+- **Live GPS Tracking**: Automatically discovers points of interest (POIs) around your current location as you move.
+- **Nominatim Search**: Powerful autocomplete for cities, landmarks, and specific addresses.
+- **Overpass API Integration**: Fetches real-time data for 9 categories (Food, Temples, Hotels, Landmarks, Nature, etc.) directly from OSM.
+- **Smart Filters**: Dynamic filtering on top of both live location and searched results.
 
-## How can I edit this code?
+### 📍 Google Maps-Style Place Details
+- **Rich Place Sheets**: Detailed information including opening hours, contact info, and website links.
+- **Smart Rating System**: Deterministic quality scoring based on OSM data and Wikipedia presence.
+- **Photo Gallery**: Fetches real imagery from Wikimedia Commons and Wikipedia.
+- **Community Reviews**: Realistic, deterministic reviews and ratings for every location.
 
-There are several ways of editing your application.
+### 🛣️ Advanced Routing & Navigation
+- **OSRM Integration**: High-speed routing for Driving, Walking, and Cycling modes.
+- **Animated Routes**: Visual polyline overlays with dashed animation for clear navigation.
+- **Cost Estimation**: Realistic fare estimates for Cabs (Ola/Uber), Auto Rickshaws, Buses, and Bike Taxis.
+- **Turn-by-Turn Directions**: Detailed maneuvers with intuitive direction icons.
+- **Deep Linking**: One-click "Open in Google Maps" for final-mile navigation.
 
-**Use Lovable**
+### 🛡️ Safety & Reliability
+- **SOS Functionality**: Quick-access emergency buttons.
+- **Fallback Servers**: Automatic rotation between multiple Overpass API mirrors for maximum uptime.
+- **Offline-Ready UI**: Caching mechanisms for search results and place data.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## 🛠️ Technology Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+### Frontend
+- **Framework**: React 18 + Vite
+- **Language**: TypeScript (Strict Mode)
+- **Styling**: Tailwind CSS + shadcn/ui
+- **Animations**: GSAP + Framer Motion
+- **Maps**: Leaflet.js
+- **Routing**: OSRM (Open Source Routing Machine)
+- **Gecoding**: Nominatim
 
-**Use your preferred IDE**
+### Backend & Data
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth
+- **Spatial Data**: OpenStreetMap (OSM) via Overpass API
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 📦 Getting Started
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Prerequisites
+- Node.js (v18 or higher)
+- npm or pnpm
 
-Follow these steps:
+### Installation
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+1. Clone the repository:
+   ```bash
+   git clone <YOUR_GIT_URL>
+   cd mini-gudie
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+3. Set up environment variables:
+   Create a `.env` file with your Supabase credentials:
+   ```env
+   VITE_SUPABASE_URL=your_url
+   VITE_SUPABASE_ANON_KEY=your_key
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+4. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-**Edit a file directly in GitHub**
+## 🏗️ Project Structure
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- `src/pages/Explore.tsx`: The core logic for search, map interaction, and routing.
+- `src/components/InteractiveMap.tsx`: Reusable Leaflet map component with imperative route handles.
+- `src/hooks/useExploreSearch.ts`: Debounced search hooks and distance utility functions.
+- `src/integrations/supabase/`: Database and Auth definitions.
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## 📄 License
+This project is licensed under the MIT License.
