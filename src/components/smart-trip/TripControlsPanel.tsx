@@ -70,11 +70,15 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
   useEffect(() => {
     if (!panelRef.current) return;
     const els = panelRef.current.querySelectorAll(".ctrl-section");
-    gsap.fromTo(
-      els,
-      { y: 30, opacity: 0 },
-      { y: 0, opacity: 1, stagger: 0.08, duration: 0.5, ease: "power3.out" }
-    );
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!prefersReduced) {
+      // gsap.from reads the current CSS value as destination — elements are always
+      // visible by default and only animate FROM the hidden state, never get stuck.
+      gsap.from(els, {
+        y: 24, opacity: 0, stagger: 0.07, duration: 0.45, ease: "power3.out",
+        clearProps: "all",   // clean up inline styles after animation finishes
+      });
+    }
   }, []);
 
   const set = (partial: Partial<TripInputs>) => onChange({ ...values, ...partial });
@@ -300,7 +304,11 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
             </span>
           )}
         </label>
-        <div className="flex gap-2 flex-wrap">
+        {/* Transport mode grid — auto-sizes to 4 or 5 columns, never wraps/overlaps */}
+        <div className={`grid gap-2 ${TRANSPORT_MODES.filter((m) => m.id !== "flight" || flightAvailable === true).length <= 4
+          ? "grid-cols-4"
+          : "grid-cols-5"
+          }`}>
           {TRANSPORT_MODES
             .filter((m) => m.id !== "flight" || flightAvailable === true)
             .map((m) => (
@@ -437,17 +445,19 @@ function TransportBtn({
         onClick={handleClick}
         onMouseEnter={handleHover}
         onMouseLeave={handleLeave}
-        className={`flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl border transition-all ${active
+        className={`w-full flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border transition-all ${active
           ? "bg-primary/15 border-primary shadow-md shadow-primary/20"
           : "bg-muted/30 border-border hover:bg-muted/60"
           }`}
       >
-        <span className="text-xl">{icon}</span>
-        <span className={`text-xs font-medium ${active ? "text-primary" : "text-muted-foreground"}`}>
+        <span className="text-xl leading-none">{icon}</span>
+        <span className={`text-[11px] font-semibold leading-tight ${active ? "text-primary" : "text-foreground"
+          }`}>
           {label}
         </span>
-        {/* Duration/distance badge */}
-        <span className={`text-[10px] leading-tight ${active ? "text-primary/80" : "text-muted-foreground/60"}`}>
+        {/* Duration badge — always readable */}
+        <span className={`text-[10px] font-medium leading-tight ${active ? "text-primary/90" : "text-muted-foreground"
+          }`}>
           {showDuration ? dur : "—"}
         </span>
       </button>

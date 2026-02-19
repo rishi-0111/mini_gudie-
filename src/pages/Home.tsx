@@ -81,129 +81,57 @@ const Home = () => {
   useEffect(() => {
     const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const ctx = gsap.context(() => {
-      if (prefersReduced) {
-        // Skip decorative animations — just make everything visible
-        gsap.set([heroRef.current, greetingRef.current, locationBarRef.current,
-        quickActionsRef.current?.children ?? [],
-        categoriesRef.current?.children ?? [],
-        voiceBtnRef.current], { opacity: 1, y: 0, x: 0, scale: 1, clipPath: "none" });
-        return;
-      }
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      if (prefersReduced) return; // CSS keeps everything visible — no animation needed
 
-      // Hero section slides down
-      tl.fromTo(heroRef.current, { y: -80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8 });
+      const tl = gsap.timeline({ defaults: { ease: "power3.out", clearProps: "all" } });
 
-      // Pin hero + scrub parallax — hero stays pinned while user scrolls past
-      gsap.timeline({
-        scrollTrigger: {
-          scrub: 1,
-          pin: true,
-          trigger: heroRef.current,
-          start: "50% 50%",
-          endTrigger: quickActionsRef.current,
-          end: "bottom 50%",
-        },
-      }).to(heroRef.current, {
-        backgroundPositionY: "40%",
-        opacity: 0.85,
-        scale: 0.97,
-      });
+      // Hero slides down
+      tl.from(heroRef.current, { y: -60, opacity: 0, duration: 0.7 });
 
-      // Header icons fade in from sides
+      // Header icons from sides
       if (headerRef.current) {
         const children = headerRef.current.children;
-        tl.fromTo(
-          children[0],
-          { x: -30, opacity: 0 },
-          { x: 0, opacity: 1, duration: 0.5 },
-          "-=0.4"
-        );
-        tl.fromTo(
-          children[1],
-          { x: 30, opacity: 0 },
-          { x: 0, opacity: 1, duration: 0.5 },
-          "-=0.4"
-        );
+        tl.from(children[0], { x: -24, opacity: 0, duration: 0.45 }, "-=0.35");
+        tl.from(children[1], { x: 24, opacity: 0, duration: 0.45 }, "-=0.35");
       }
 
-      // Greeting text with clip-path reveal
-      tl.fromTo(
+      // Greeting text
+      tl.from(
         greetingRef.current,
-        { y: 30, opacity: 0, clipPath: "inset(100% 0% 0% 0%)" },
-        { y: 0, opacity: 1, clipPath: "inset(0% 0% 0% 0%)", duration: 0.7 },
-        "-=0.3"
+        { y: 24, opacity: 0, clipPath: "inset(100% 0% 0% 0%)", duration: 0.6 },
+        "-=0.25"
       );
 
-      // Location bar slides in
-      tl.fromTo(
-        locationBarRef.current,
-        { y: 20, opacity: 0, scale: 0.95 },
-        { y: 0, opacity: 1, scale: 1, duration: 0.6 },
-        "-=0.3"
-      );
+      // Location bar
+      tl.from(locationBarRef.current, { y: 16, opacity: 0, scale: 0.96, duration: 0.5 }, "-=0.25");
 
-      // Quick Actions stagger in with scale
+      // Quick Actions stagger
       if (quickActionsRef.current) {
-        tl.fromTo(
+        tl.from(
           quickActionsRef.current.children,
-          { y: 40, opacity: 0, scale: 0.8 },
-          {
-            y: 0,
-            opacity: 1,
-            scale: 1,
-            duration: 0.5,
-            stagger: 0.1,
-            ease: "back.out(1.4)",
-          },
-          "-=0.2"
+          { y: 32, opacity: 0, scale: 0.82, duration: 0.45, stagger: 0.08, ease: "back.out(1.4)" },
+          "-=0.15"
         );
       }
 
-      // Categories section with scrub scroll timeline
+      // Categories title (scroll-triggered)
       if (categoriesTitleRef.current) {
-        gsap.timeline({
-          scrollTrigger: {
-            scrub: 1,
-            trigger: categoriesTitleRef.current,
-            start: "top 90%",
-            end: "bottom 30%",
-          },
-        }).fromTo(
-          categoriesTitleRef.current,
-          { x: -30, opacity: 0 },
-          { x: 0, opacity: 1, duration: 0.6 }
-        );
-      }
-
-      if (categoriesRef.current) {
-        const catTl = gsap.timeline({
-          scrollTrigger: {
-            scrub: 1,
-            trigger: categoriesRef.current,
-            start: "top 90%",
-            end: "bottom 30%",
-          },
+        gsap.from(categoriesTitleRef.current, {
+          x: -24, opacity: 0, duration: 0.5, clearProps: "all",
+          scrollTrigger: { trigger: categoriesTitleRef.current, start: "top 88%", toggleActions: "play none none none" },
         });
-        catTl.fromTo(
-          categoriesRef.current.children,
-          { y: 30, opacity: 0, scale: 0.85 },
-          { y: 0, opacity: 1, scale: 1, duration: 0.5, stagger: 0.08, ease: "back.out(1.2)" }
-        );
       }
 
-      // Voice button
-      gsap.fromTo(
-        voiceBtnRef.current,
-        { scale: 0, opacity: 0 },
-        {
-          scale: 1,
-          opacity: 1,
-          duration: 0.6,
-          delay: 1.5,
-          ease: "back.out(2)",
-        }
-      );
+      // Category cards staggered scroll-triggered
+      if (categoriesRef.current) {
+        gsap.from(categoriesRef.current.children, {
+          y: 24, opacity: 0, scale: 0.88, duration: 0.4, stagger: 0.07, ease: "back.out(1.2)", clearProps: "all",
+          scrollTrigger: { trigger: categoriesRef.current, start: "top 88%", toggleActions: "play none none none" },
+        });
+      }
+
+      // Voice FAB
+      gsap.from(voiceBtnRef.current, { scale: 0, opacity: 0, duration: 0.55, delay: 1.2, ease: "back.out(2)", clearProps: "all" });
     }, pageRef);
 
     return () => {

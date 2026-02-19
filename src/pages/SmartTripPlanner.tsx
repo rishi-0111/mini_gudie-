@@ -78,9 +78,15 @@ export default function SmartTripPlanner() {
 
   // Hero animation
   useEffect(() => {
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const ctx = gsap.context(() => {
-      gsap.fromTo(heroRef.current, { y: -50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" });
-      gsap.fromTo(contentRef.current, { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, delay: 0.2, ease: "power3.out" });
+      if (prefersReduced) return; // CSS shows everything by default
+      gsap.from(heroRef.current, {
+        y: -40, opacity: 0, duration: 0.6, ease: "power3.out", clearProps: "all",
+      });
+      gsap.from(contentRef.current, {
+        y: 32, opacity: 0, duration: 0.5, delay: 0.18, ease: "power3.out", clearProps: "all",
+      });
     }, pageRef);
     return () => ctx.revert();
   }, []);
@@ -239,7 +245,7 @@ export default function SmartTripPlanner() {
   };
 
   return (
-    <div ref={pageRef} className="min-h-screen bg-background pb-24">
+    <div ref={pageRef} className="min-h-screen bg-background page-scroll">
       {/* Hero Header */}
       <div
         ref={heroRef}
@@ -278,7 +284,7 @@ export default function SmartTripPlanner() {
       </div>
 
       {/* Content */}
-      <div ref={contentRef} className="px-4 sm:px-6 -mt-8 space-y-5 max-w-2xl mx-auto">
+      <div ref={contentRef} className="px-4 sm:px-6 mt-4 space-y-5 max-w-2xl mx-auto">
         {/* Error banner */}
         {error && (
           <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-sm text-destructive">
