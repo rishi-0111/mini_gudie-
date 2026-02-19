@@ -534,7 +534,7 @@ const Explore = () => {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background page-scroll">
 
       {/* ── Header ── */}
       <div className="bg-gradient-hero px-5 pt-8 pb-5 rounded-b-[2rem] relative overflow-hidden">
@@ -722,11 +722,12 @@ const Explore = () => {
 
       {/* ── Place Detail Sheet ── */}
       {(selectedPlace || sheetLoading) && (
-        <div className="fixed inset-0 z-[1200] pointer-events-none">
+        <div className="fixed inset-0 z-[50] pointer-events-none">
           {/* Backdrop tap to close */}
-          <div className="absolute inset-0 pointer-events-auto" onClick={() => { setSelectedPlace(null); setSheetLoading(false); }} />
+          <div className="absolute inset-0 pointer-events-auto bg-black/10" onClick={() => { setSelectedPlace(null); setSheetLoading(false); }} />
           <div
-            className="absolute bottom-0 left-0 right-0 pointer-events-auto bg-background border-t border-border rounded-t-3xl shadow-2xl overflow-y-auto"
+            data-bottom-sheet
+            className="absolute bottom-0 left-0 right-0 pointer-events-auto bg-background border-t border-border rounded-t-3xl shadow-2xl overflow-y-auto bottom-sheet"
             style={{ maxHeight: sheetExpanded ? "92vh" : "70vh", transition: "max-height 0.3s ease" }}
             onClick={(e) => e.stopPropagation()}
           >

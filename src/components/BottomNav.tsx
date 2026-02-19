@@ -17,39 +17,59 @@ const BottomNav = () => {
     { icon: User, label: t.profile, href: "/profile" },
   ];
 
-  // Entrance animation
+  // Entrance animation — only if motion is OK
   useEffect(() => {
-    if (navRef.current) {
-      gsap.fromTo(
-        navRef.current,
-        { y: 80, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6, delay: 0.8, ease: "power3.out" }
-      );
+    if (!navRef.current) return;
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) {
+      gsap.set(navRef.current, { opacity: 1, y: 0 });
+      return;
     }
+    gsap.fromTo(
+      navRef.current,
+      { y: 80, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.55, delay: 0.6, ease: "power3.out" }
+    );
   }, []);
 
-  // Animate active indicator on route change
+  // Bounce the active item on route change
   useEffect(() => {
     const activeIndex = navItems.findIndex((item) => item.href === location.pathname);
     if (activeIndex !== -1 && itemRefs.current[activeIndex]) {
-      gsap.fromTo(
-        itemRefs.current[activeIndex],
-        { scale: 0.9 },
-        { scale: 1, duration: 0.3, ease: "back.out(2)" }
-      );
+      const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!prefersReduced) {
+        gsap.fromTo(
+          itemRefs.current[activeIndex],
+          { scale: 0.88 },
+          { scale: 1, duration: 0.35, ease: "back.out(2)" }
+        );
+      }
     }
-  }, [location.pathname]);
+  }, [location.pathname]); // eslint-disable-line
 
   const handleTap = useCallback((index: number) => {
     const el = itemRefs.current[index];
-    if (el) {
-      gsap.fromTo(el, { scale: 0.85 }, { scale: 1, duration: 0.4, ease: "elastic.out(1, 0.4)" });
+    if (!el) return;
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!prefersReduced) {
+      gsap.fromTo(el, { scale: 0.82 }, { scale: 1, duration: 0.4, ease: "elastic.out(1, 0.4)" });
     }
   }, []);
 
   return (
-    <nav ref={navRef} className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-6 py-3 glass opacity-0">
-      <div className="flex items-center justify-around max-w-md mx-auto">
+    <nav
+      ref={navRef}
+      data-bottom-nav
+      className="
+        fixed bottom-0 left-0 right-0
+        bg-card/95 backdrop-blur-xl
+        border-t border-border/60
+        opacity-0
+        z-[60]
+      "
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    >
+      <div className="flex items-stretch justify-around max-w-lg mx-auto px-2 h-[4.5rem]">
         {navItems.map((item, index) => {
           const isActive = location.pathname === item.href;
           return (
@@ -58,16 +78,27 @@ const BottomNav = () => {
               to={item.href}
               ref={(el) => { itemRefs.current[index] = el; }}
               onClick={() => handleTap(index)}
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-colors duration-200 ${isActive
+              className={`
+                relative flex flex-col items-center justify-center gap-0.5
+                flex-1 px-2 py-2 rounded-2xl mx-1 my-2
+                transition-colors duration-200
+                ${isActive
                   ? "text-primary bg-primary/10"
-                  : "text-muted-foreground hover:text-foreground"
-                }`}
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                }
+              `}
             >
-              <item.icon className={`w-6 h-6 transition-transform ${isActive ? "scale-110" : ""}`} />
-              <span className="text-xs font-medium">{item.label}</span>
+              {/* Active fill indicator */}
               {isActive && (
-                <div className="w-1.5 h-1.5 rounded-full bg-primary mt-0.5" />
+                <span className="
+                  absolute top-1.5 left-1/2 -translate-x-1/2
+                  w-5 h-0.5 rounded-full bg-primary
+                  animate-fade-in
+                " />
               )}
+
+              <item.icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? "scale-110" : ""}`} />
+              <span className="text-[10px] font-semibold tracking-wide">{item.label}</span>
             </Link>
           );
         })}

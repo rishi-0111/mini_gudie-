@@ -79,7 +79,16 @@ const Home = () => {
 
   // GSAP entrance animations
   useEffect(() => {
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const ctx = gsap.context(() => {
+      if (prefersReduced) {
+        // Skip decorative animations — just make everything visible
+        gsap.set([heroRef.current, greetingRef.current, locationBarRef.current,
+        quickActionsRef.current?.children ?? [],
+        categoriesRef.current?.children ?? [],
+        voiceBtnRef.current], { opacity: 1, y: 0, x: 0, scale: 1, clipPath: "none" });
+        return;
+      }
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
       // Hero section slides down
@@ -201,6 +210,7 @@ const Home = () => {
       ScrollTrigger.getAll().forEach((st) => st.kill());
       ctx.revert();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Start / stop GPS watching
@@ -347,9 +357,9 @@ const Home = () => {
   ];
 
   return (
-    <div ref={pageRef} className="min-h-screen bg-background pb-24">
+    <div ref={pageRef} className="min-h-screen bg-background page-scroll">
       {/* Header */}
-      <div ref={heroRef} className="bg-gradient-hero px-6 pt-8 pb-20 rounded-b-[2rem] relative overflow-hidden">
+      <div ref={heroRef} className="bg-gradient-hero px-6 pt-8 pb-8 rounded-b-[2rem] relative overflow-hidden">
         {/* Three.js Particle Background in Hero */}
         <div className="absolute inset-0 opacity-40">
           <ThreeScene className="absolute inset-0">
@@ -475,7 +485,7 @@ const Home = () => {
       </div>
 
       {/* Main Content */}
-      <div className="px-6 -mt-8">
+      <div className="px-6 mt-4">
         {/* Quick Actions */}
         <div ref={quickActionsRef} className="grid grid-cols-3 gap-4 mb-8">
           {quickActions.map((action) => (
@@ -532,16 +542,15 @@ const Home = () => {
           </div>
         </Link>
 
-        {/* Voice Assistant FAB */}
+        {/* Voice Assistant FAB — sits left side, same level as SOS */}
         <button
           ref={voiceBtnRef}
           onClick={handleVoiceAssistant}
-          className={`fixed left-6 bottom-28 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors duration-300 ${isVoiceActive
-            ? "bg-accent shadow-sos"
-            : "bg-gradient-primary shadow-glow"
-            }`}
+          aria-label="Voice assistant"
+          className={`fixed left-4 z-[55] w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-colors duration-300 ${isVoiceActive ? "bg-accent shadow-sos" : "bg-gradient-primary shadow-glow"}`}
+          style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px) + 1rem)" }}
         >
-          <Mic className={`w-6 h-6 text-primary-foreground ${isVoiceActive ? "animate-pulse" : ""}`} />
+          <Mic className={`w-5 h-5 text-primary-foreground ${isVoiceActive ? "animate-pulse" : ""}`} />
         </button>
       </div>
 
