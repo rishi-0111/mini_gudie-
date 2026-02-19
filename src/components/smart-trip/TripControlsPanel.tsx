@@ -34,6 +34,7 @@ interface TripControlsPanelProps {
   onChange: (v: TripInputs) => void;
   flightAvailable?: boolean;
   actualDistance?: number;
+  actualDuration?: number;
   distanceLoading?: boolean;
 }
 
@@ -54,7 +55,16 @@ function formatDuration(km: number, speed: number): string {
   return m > 0 ? `~${h}h ${m}m` : `~${h}h`;
 }
 
-export default function TripControlsPanel({ values, onChange, flightAvailable, actualDistance, distanceLoading }: TripControlsPanelProps) {
+function formatOSMTime(mins: number): string {
+  const m = Math.round(mins);
+  if (m < 60) return `${m}m`;
+  const hrs = Math.floor(m / 60);
+  const remMins = m % 60;
+  return remMins > 0 ? `${hrs}h ${remMins}m` : `${hrs}h`;
+}
+
+export default function TripControlsPanel({ values, onChange, flightAvailable, actualDistance, actualDuration, distanceLoading }: TripControlsPanelProps) {
+
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -96,17 +106,41 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
   return (
     <div ref={panelRef} className="space-y-5">
       {/* From / To — high z-index so dropdown overlays below sections */}
-      <div className="ctrl-section grid grid-cols-2 gap-3 relative" style={{ zIndex: 50 }}>
+      <div className="ctrl-section grid grid-cols-[1fr,auto,1fr] gap-2 items-end relative" style={{ zIndex: 50 }}>
         <CityAutocomplete
           value={values.fromCity}
-          onChange={(v, lat, lng) => set({ fromCity: v, fromLat: lat || 0, fromLng: lng || 0 })}
+          onChange={(city) => set({
+            fromCity: city?.name || "",
+            fromLat: city?.lat || 0,
+            fromLng: city?.lon || 0
+          })}
           placeholder="Current Location"
           icon={<MapPin className="w-3 h-3" />}
           label="From"
         />
+
+        <button
+          onClick={() => set({
+            fromCity: values.toCity,
+            fromLat: values.toLat,
+            fromLng: values.toLng,
+            toCity: values.fromCity,
+            toLat: values.fromLat,
+            toLng: values.fromLng
+          })}
+          className="mb-1 w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-colors shadow-sm"
+          title="Swap locations"
+        >
+          <Compass className="w-4 h-4 rotate-45" />
+        </button>
+
         <CityAutocomplete
           value={values.toCity}
-          onChange={(v, lat, lng) => set({ toCity: v, toLat: lat || 0, toLng: lng || 0 })}
+          onChange={(city) => set({
+            toCity: city?.name || "",
+            toLat: city?.lat || 0,
+            toLng: city?.lon || 0
+          })}
           placeholder="e.g. Jaipur"
           icon={<Compass className="w-3 h-3" />}
           label="To"
@@ -119,7 +153,7 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
           {distanceLoading ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <div className="w-3 h-3 border-2 border-primary/50 border-t-primary rounded-full animate-spin" />
-              Calculating distance & checking flights...
+              Calculating road distance & checking options...
             </div>
           ) : distanceKnown ? (
             <div className="flex items-center gap-2 text-xs font-medium text-primary">
@@ -134,6 +168,7 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
           ) : null}
         </div>
       )}
+
 
       {/* Budget Slider (input + drag) */}
       <div className="ctrl-section glass-card p-4 rounded-2xl relative" style={{ zIndex: 1 }}>
@@ -227,11 +262,10 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
               className="transition-transform hover:scale-125"
             >
               <Star
-                className={`w-7 h-7 transition-colors ${
-                  s <= values.rating
-                    ? "fill-amber-400 text-amber-400"
-                    : "fill-none text-muted-foreground/40"
-                }`}
+                className={`w-7 h-7 transition-colors ${s <= values.rating
+                  ? "fill-amber-400 text-amber-400"
+                  : "fill-none text-muted-foreground/40"
+                  }`}
               />
             </button>
           ))}
@@ -270,18 +304,19 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
           {TRANSPORT_MODES
             .filter((m) => m.id !== "flight" || flightAvailable === true)
             .map((m) => (
-            <TransportBtn
-              key={m.id}
-              icon={m.icon}
-              label={m.label}
-              speed={m.speed}
-              distance={displayDistance}
-              active={values.transportMode === m.id}
-              recommended={autoRecommended === m.id && values.transportMode === "auto"}
-              showDuration={distanceKnown}
-              onClick={() => set({ transportMode: m.id })}
-            />
-          ))}
+              <TransportBtn
+                key={m.id}
+                icon={m.icon}
+                label={m.label}
+                speed={m.speed}
+                distance={displayDistance}
+                osmDuration={m.id === "auto" || m.id === "bus" ? actualDuration : undefined}
+                active={values.transportMode === m.id}
+                recommended={autoRecommended === m.id && values.transportMode === "auto"}
+                showDuration={distanceKnown}
+                onClick={() => set({ transportMode: m.id })}
+              />
+            ))}
         </div>
         {/* Duration callout for selected mode */}
         {values.transportMode !== "auto" && distanceKnown && (
@@ -290,10 +325,24 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
             <span>
               {Math.round(displayDistance)} km by {values.transportMode} ≈{" "}
               <strong className="text-foreground">
-                {formatDuration(
-                  displayDistance,
-                  TRANSPORT_MODES.find((m) => m.id === values.transportMode)?.speed || 60
-                )}
+                {values.transportMode === "bus" && actualDuration
+                  ? formatOSMTime(actualDuration)
+                  : formatDuration(
+                    displayDistance,
+                    TRANSPORT_MODES.find((m) => m.id === values.transportMode)?.speed || 60
+                  )
+                }
+              </strong>
+            </span>
+          </div>
+        )}
+        {values.transportMode === "auto" && distanceKnown && actualDuration && (
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock className="w-3 h-3" />
+            <span>
+              {Math.round(displayDistance)} km by road ≈{" "}
+              <strong className="text-foreground text-primary">
+                {formatOSMTime(actualDuration)}
               </strong>
             </span>
           </div>
@@ -326,14 +375,12 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
         </div>
         <button
           onClick={() => set({ hiddenGems: !values.hiddenGems })}
-          className={`relative w-12 h-6 rounded-full transition-colors ${
-            values.hiddenGems ? "bg-primary" : "bg-muted"
-          }`}
+          className={`relative w-12 h-6 rounded-full transition-colors ${values.hiddenGems ? "bg-primary" : "bg-muted"
+            }`}
         >
           <div
-            className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-              values.hiddenGems ? "translate-x-6" : "translate-x-0.5"
-            }`}
+            className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${values.hiddenGems ? "translate-x-6" : "translate-x-0.5"
+              }`}
           />
         </button>
       </div>
@@ -346,6 +393,7 @@ function TransportBtn({
   label,
   speed,
   distance,
+  osmDuration,
   active,
   recommended,
   showDuration = true,
@@ -355,13 +403,14 @@ function TransportBtn({
   label: string;
   speed: number;
   distance: number;
+  osmDuration?: number;
   active: boolean;
   recommended: boolean;
   showDuration?: boolean;
   onClick: () => void;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
-  const dur = speed > 0 ? formatDuration(distance, speed) : "AI";
+  const dur = osmDuration ? formatOSMTime(osmDuration) : speed > 0 ? formatDuration(distance, speed) : "AI";
 
   const handleClick = () => {
     onClick();
@@ -388,11 +437,10 @@ function TransportBtn({
         onClick={handleClick}
         onMouseEnter={handleHover}
         onMouseLeave={handleLeave}
-        className={`flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl border transition-all ${
-          active
-            ? "bg-primary/15 border-primary shadow-md shadow-primary/20"
-            : "bg-muted/30 border-border hover:bg-muted/60"
-        }`}
+        className={`flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl border transition-all ${active
+          ? "bg-primary/15 border-primary shadow-md shadow-primary/20"
+          : "bg-muted/30 border-border hover:bg-muted/60"
+          }`}
       >
         <span className="text-xl">{icon}</span>
         <span className={`text-xs font-medium ${active ? "text-primary" : "text-muted-foreground"}`}>

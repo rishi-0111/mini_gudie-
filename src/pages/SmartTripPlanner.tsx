@@ -52,6 +52,7 @@ export default function SmartTripPlanner() {
   const [transportTab, setTransportTab] = useState("bus");
   const [flightAvailable, setFlightAvailable] = useState<boolean | undefined>(undefined);
   const [actualDistance, setActualDistance] = useState<number | undefined>(undefined);
+  const [actualDuration, setActualDuration] = useState<number | undefined>(undefined);
   const [distanceLoading, setDistanceLoading] = useState(false);
 
   const pageRef = useRef<HTMLDivElement>(null);
@@ -84,60 +85,57 @@ export default function SmartTripPlanner() {
     return () => ctx.revert();
   }, []);
 
-  // Check flight availability & actual distance when both cities are entered
+  // Check distance and duration via OSRM when both cities are selected
   useEffect(() => {
-    const from = inputs.fromCity.trim();
-    const to = inputs.toCity.trim();
-    if (!from || !to || from === to || from.length < 2 || to.length < 2) {
-      setFlightAvailable(undefined);
+    const { fromLat, fromLng, toLat, toLng, fromCity, toCity } = inputs;
+
+    if (!fromLat || !fromLng || !toLat || !toLng || !fromCity || !toCity) {
       setActualDistance(undefined);
+      setActualDuration(undefined);
+      setFlightAvailable(undefined);
       setDistanceLoading(false);
       return;
     }
 
     let cancelled = false;
     setDistanceLoading(true);
+
     const timer = setTimeout(async () => {
       try {
-        const API_URL = import.meta.env.VITE_HIDDEN_GEM_API_URL || "http://localhost:8000";
-        const qs = new URLSearchParams({
-          from_city: from,
-          to_city: to,
-          ...(inputs.fromLat ? { from_lat: String(inputs.fromLat), from_lng: String(inputs.fromLng) } : {}),
-          ...(inputs.toLat ? { to_lat: String(inputs.toLat), to_lng: String(inputs.toLng) } : {}),
-        });
-        const res = await fetch(`${API_URL}/city-distance?${qs}`);
+        // OSRM URL uses {fromLon},{fromLat};{toLon},{toLat}
+        const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=false`;
+
+        const res = await fetch(url);
         if (cancelled) return;
+
         const data = await res.json();
-        if (!cancelled && !data.error) {
-          setFlightAvailable(data.flightAvailable ?? false);
-          setActualDistance(data.distance ?? undefined);
-          // Store geocoded coords from API response
-          if (data.fromLat && !inputs.fromLat) {
-            setInputs(prev => ({ ...prev, fromLat: data.fromLat, fromLng: data.fromLng }));
-          }
-          if (data.toLat && !inputs.toLat) {
-            setInputs(prev => ({ ...prev, toLat: data.toLat, toLng: data.toLng }));
-          }
-        } else if (!cancelled && data.error) {
-          setFlightAvailable(false);
+        if (!cancelled && data.code === "Ok" && data.routes?.[0]) {
+          const route = data.routes[0];
+          // Extracted distance is in meters, convert to km
+          const km = route.distance / 1000;
+          const mins = route.duration / 60;
+          setActualDistance(km);
+          setActualDuration(mins);
+
+          // Heuristic for flight availability
+          setFlightAvailable(km > 600);
+        } else {
           setActualDistance(undefined);
+          setActualDuration(undefined);
         }
-      } catch {
-        if (!cancelled) {
-          setFlightAvailable(false);
-          setActualDistance(undefined);
-        }
+      } catch (err) {
+        console.error("OSM Routing Error:", err);
       } finally {
         if (!cancelled) setDistanceLoading(false);
       }
-    }, 500);
+    }, 400);
 
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [inputs.fromCity, inputs.toCity, inputs.fromLat, inputs.toLat]);
+  }, [inputs.fromLat, inputs.fromLng, inputs.toLat, inputs.toLng, inputs.fromCity, inputs.toCity]);
+
 
   // Generate plan handler
   const handleGenerate = useCallback(async () => {
@@ -296,8 +294,10 @@ export default function SmartTripPlanner() {
               onChange={setInputs}
               flightAvailable={flightAvailable}
               actualDistance={actualDistance}
+              actualDuration={actualDuration}
               distanceLoading={distanceLoading}
             />
+
 
             {/* Generate Button */}
             <GenerateButton onClick={handleGenerate} loading={loading} disabled={!inputs.toCity.trim() || !inputs.fromCity.trim()} />
