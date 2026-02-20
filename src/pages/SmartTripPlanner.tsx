@@ -335,19 +335,19 @@ export default function SmartTripPlanner() {
               >
                 <span>🚀 Transport Options</span>
                 <span className="text-xs text-muted-foreground">
-                  {(plan.transport.buses?.length || 0) +
-                    (plan.transport.trains?.length || 0) +
-                    (plan.transport.flights?.length || 0)}{" "}
+                  {((plan.transport?.buses?.length || 0) +
+                    (plan.transport?.trains?.length || 0) +
+                    (plan.transport?.flights?.length || 0))}{" "}
                   options
                 </span>
               </button>
 
-              {showTransport && (
+              {showTransport && plan.transport && (
                 <TransportOptions
                   data={plan.transport}
                   budget={inputs.budget}
                   persons={inputs.persons}
-                  distance={plan.distance}
+                  distance={plan.distance || 0}
                   loading={false}
                   activeTab={transportTab}
                   onTabChange={setTransportTab}

@@ -23,6 +23,41 @@ import CategoryDetail from "./pages/CategoryDetail";
 import Payment from "./pages/Payment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import { ParticleSystemBackground } from "@/components/ParticleSystemBackground";
+import React from "react";
+
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; message: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, message: "" };
+  }
+  static getDerivedStateFromError(err: Error) {
+    return { hasError: true, message: err.message };
+  }
+  componentDidCatch(err: Error, info: React.ErrorInfo) {
+    console.error("[App ErrorBoundary]", err, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 bg-background text-center">
+          <div className="text-4xl">⚠️</div>
+          <h2 className="text-lg font-bold">Something went wrong</h2>
+          <p className="text-sm text-muted-foreground max-w-xs">{this.state.message}</p>
+          <button
+            onClick={() => { this.setState({ hasError: false, message: "" }); }}
+            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const queryClient = new QueryClient();
 
@@ -40,6 +75,7 @@ const App = () => (
             interactive={true}
           />
           <BrowserRouter>
+            <ErrorBoundary>
             <Routes>
               <Route path="/" element={<SplashScreen />} />
               <Route path="/signup" element={<SignUp />} />
@@ -60,6 +96,7 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </ErrorBoundary>
           </BrowserRouter>
         </TooltipProvider>
       </UserProvider>

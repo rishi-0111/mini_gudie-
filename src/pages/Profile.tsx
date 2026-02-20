@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -16,10 +16,22 @@ import {
   LogOut,
   Camera,
   Loader2,
+  Bell,
+  Lock,
+  MapPin,
+  MessageSquare,
+  Bug,
+  AlertTriangle,
+  BookOpen,
+  Mail,
+  ToggleLeft,
+  ToggleRight,
+  ChevronDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 import FloatingSOS from "@/components/FloatingSOS";
+import gsap from "gsap";
 import { useLanguage, Language } from "@/contexts/LanguageContext";
 import { useUser } from "@/contexts/UserContext";
 import AvatarPicker from "@/components/AvatarPicker";
@@ -51,6 +63,15 @@ const Profile = () => {
     { id: "2", name: "Dad", phone: "+91 98765 00002", relation: "Father", isPrimary: false },
   ]);
 
+  // Settings & Help sections
+  const [showSettings, setShowSettings] = useState(false);
+  const [showHelpSupport, setShowHelpSupport] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [locationEnabled, setLocationEnabled] = useState(true);
+
+  // Animation refs
+  const cardsContainerRef = useRef<HTMLDivElement>(null);
+
   // Load emergency contacts from Supabase
   useEffect(() => {
     const loadUserData = async () => {
@@ -74,6 +95,28 @@ const Profile = () => {
     };
     
     loadUserData();
+  }, []);
+
+  // GSAP bubble animation for icons
+  useEffect(() => {
+    if (cardsContainerRef.current) {
+      const iconContainers = cardsContainerRef.current.querySelectorAll('.icon-bubble');
+      
+      gsap.fromTo(
+        iconContainers,
+        {
+          scale: 0,
+          opacity: 0,
+        },
+        {
+          scale: 1,
+          opacity: 1,
+          duration: 0.6,
+          ease: 'elastic.out(1, 0.5)',
+          stagger: 0.1,
+        }
+      );
+    }
   }, []);
 
   const handleStartEdit = () => {
@@ -281,7 +324,7 @@ const Profile = () => {
         </div>
       </div>
 
-      <div className="px-6 -mt-8 space-y-6">
+      <div ref={cardsContainerRef} className="px-6 -mt-8 space-y-6">
         {/* Avatar Picker */}
         {showAvatarPicker && (
           <AvatarPicker
@@ -341,7 +384,7 @@ const Profile = () => {
         <div className="travel-card">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+              <div className="icon-bubble w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
                 <Users className="w-5 h-5 text-destructive" />
               </div>
               <div>
@@ -449,7 +492,7 @@ const Profile = () => {
             className="w-full flex items-center justify-between"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <div className="icon-bubble w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Globe className="w-5 h-5 text-primary" />
               </div>
               <div className="text-left">
@@ -484,32 +527,216 @@ const Profile = () => {
           <DarkModeToggle />
         </div>
 
-        {/* Other Settings */}
-        <div className="travel-card space-y-3">
-          <button className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-secondary transition-colors">
-            <div className="flex items-center gap-3">
-              <Settings className="w-5 h-5 text-muted-foreground" />
-              <span className="font-medium">{t.settings}</span>
-            </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground" />
-          </button>
-          <button className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-secondary transition-colors">
-            <div className="flex items-center gap-3">
-              <HelpCircle className="w-5 h-5 text-muted-foreground" />
-              <span className="font-medium">{t.helpSupport}</span>
-            </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground" />
-          </button>
-          <Link
-            to="/"
-            className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-destructive/10 transition-colors text-destructive"
+        {/* Settings Section */}
+        <div className="travel-card">
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-secondary transition-colors"
           >
             <div className="flex items-center gap-3">
-              <LogOut className="w-5 h-5" />
-              <span className="font-medium">{t.logout}</span>
+              <div className="icon-bubble w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Settings className="w-5 h-5 text-primary" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-semibold">{t.settings || "Settings"}</h3>
+                <p className="text-sm text-muted-foreground">App preferences & privacy</p>
+              </div>
             </div>
-            <ChevronRight className="w-5 h-5" />
-          </Link>
+            <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${showSettings ? "rotate-180" : ""}`} />
+          </button>
+
+          {showSettings && (
+            <div className="mt-3 space-y-1 animate-fade-in border-t pt-3">
+              {/* Profile */}
+              <button
+                onClick={handleStartEdit}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-secondary transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <User className="w-5 h-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <span className="font-medium text-sm">Profile</span>
+                    <p className="text-xs text-muted-foreground">Name, phone & avatar</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+
+              {/* Location */}
+              <div className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-secondary transition-colors">
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-5 h-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <span className="font-medium text-sm">Location</span>
+                    <p className="text-xs text-muted-foreground">Allow location access</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setLocationEnabled(!locationEnabled)}
+                  className="text-primary"
+                  aria-label="Toggle location"
+                >
+                  {locationEnabled
+                    ? <ToggleRight className="w-7 h-7" />
+                    : <ToggleLeft className="w-7 h-7 text-muted-foreground" />}
+                </button>
+              </div>
+
+              {/* Preferences */}
+              <button className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-secondary transition-colors">
+                <div className="flex items-center gap-3">
+                  <Shield className="w-5 h-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <span className="font-medium text-sm">Preferences</span>
+                    <p className="text-xs text-muted-foreground">Travel style & interests</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+
+              {/* Privacy */}
+              <button className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-secondary transition-colors">
+                <div className="flex items-center gap-3">
+                  <Lock className="w-5 h-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <span className="font-medium text-sm">Privacy</span>
+                    <p className="text-xs text-muted-foreground">Data & account privacy</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+
+              {/* Notifications */}
+              <div className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-secondary transition-colors">
+                <div className="flex items-center gap-3">
+                  <Bell className="w-5 h-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <span className="font-medium text-sm">Notifications</span>
+                    <p className="text-xs text-muted-foreground">Alerts & reminders</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+                  className="text-primary"
+                  aria-label="Toggle notifications"
+                >
+                  {notificationsEnabled
+                    ? <ToggleRight className="w-7 h-7" />
+                    : <ToggleLeft className="w-7 h-7 text-muted-foreground" />}
+                </button>
+              </div>
+
+              {/* Logout */}
+              <Link
+                to="/"
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-destructive/10 transition-colors text-destructive"
+              >
+                <div className="flex items-center gap-3">
+                  <LogOut className="w-5 h-5" />
+                  <div className="text-left">
+                    <span className="font-medium text-sm">{t.logout || "Logout"}</span>
+                    <p className="text-xs text-destructive/70">Sign out of your account</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Help & Support Section */}
+        <div className="travel-card">
+          <button
+            onClick={() => setShowHelpSupport(!showHelpSupport)}
+            className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-secondary transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="icon-bubble w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                <HelpCircle className="w-5 h-5 text-green-600" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-semibold">{t.helpSupport || "Help & Support"}</h3>
+                <p className="text-sm text-muted-foreground">FAQs, contact & emergency</p>
+              </div>
+            </div>
+            <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${showHelpSupport ? "rotate-180" : ""}`} />
+          </button>
+
+          {showHelpSupport && (
+            <div className="mt-3 space-y-1 animate-fade-in border-t pt-3">
+              {/* FAQs */}
+              <button className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-secondary transition-colors">
+                <div className="flex items-center gap-3">
+                  <BookOpen className="w-5 h-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <span className="font-medium text-sm">FAQs</span>
+                    <p className="text-xs text-muted-foreground">Frequently asked questions</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+
+              {/* Contact Us */}
+              <a
+                href="mailto:support@miniguide.app"
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-secondary transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Mail className="w-5 h-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <span className="font-medium text-sm">Contact Us</span>
+                    <p className="text-xs text-muted-foreground">support@miniguide.app</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </a>
+
+              {/* Report Issue */}
+              <button
+                onClick={() => toast({ title: "Report Issue", description: "Thank you! We'll look into this shortly." })}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-secondary transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Bug className="w-5 h-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <span className="font-medium text-sm">Report Issue</span>
+                    <p className="text-xs text-muted-foreground">Found a bug? Let us know</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+
+              {/* Emergency Help */}
+              <button
+                onClick={() => toast({ title: "Emergency Help", description: "Call 112 for police/fire/ambulance" })}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-destructive/10 transition-colors text-destructive"
+              >
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5" />
+                  <div className="text-left">
+                    <span className="font-medium text-sm">Emergency Help</span>
+                    <p className="text-xs text-destructive/70">Police · Fire · Ambulance (112)</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+
+              {/* Feedback */}
+              <button
+                onClick={() => toast({ title: "Feedback", description: "Thanks for your feedback! We'll use it to improve." })}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-secondary transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <MessageSquare className="w-5 h-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <span className="font-medium text-sm">Feedback</span>
+                    <p className="text-xs text-muted-foreground">Share your suggestions</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -862,6 +862,7 @@
   .snap-item {
     scroll-snap-align: start;
   }
+}
 
 /* ─── prefers-reduced-motion accessibility ─────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

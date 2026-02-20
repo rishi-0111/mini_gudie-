@@ -21,6 +21,25 @@ interface PlanPreviewProps {
   foods?: FoodOption[];
 }
 
+/** Safely converts any value to a displayable string — prevents "Objects not valid as React child" crashes */
+function safeStr(val: any): string {
+  if (val == null) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "number" || typeof val === "boolean") return String(val);
+  if (Array.isArray(val)) return val.map(safeStr).join(", ");
+  if (typeof val === "object") {
+    // timings object: {open, close, darshan_morning, darshan_evening}
+    const parts: string[] = [];
+    if (val.open) parts.push(`Open: ${val.open}`);
+    if (val.close) parts.push(`Close: ${val.close}`);
+    if (val.darshan_morning) parts.push(`Morning: ${val.darshan_morning}`);
+    if (val.darshan_evening) parts.push(`Evening: ${val.darshan_evening}`);
+    if (parts.length) return parts.join(" | ");
+    return JSON.stringify(val);
+  }
+  return "";
+}
+
 export default function PlanPreview({ plan, onEdit, devotionalPlaces, stays, foods }: PlanPreviewProps) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -37,8 +56,9 @@ export default function PlanPreview({ plan, onEdit, devotionalPlaces, stays, foo
   const trip = plan.plan;
   const dayPlans = trip?.dayWisePlan || [];
   const hidden = trip?.hiddenSpots || [];
-  const bb = plan.budgetBreakdown;
-  const crowd = plan.crowd;
+  const bb = plan.budgetBreakdown ?? { transport: 0, stay: 0, food: 0, activities: 0, buffer: 0, total: 0 };
+  const crowd = plan.crowd ?? null;
+  const meta = plan.meta ?? { from: "", to: "", fromLat: 0, fromLng: 0, toLat: 0, toLng: 0, days: 0, persons: 1, budget: 0 };
 
   return (
     <div ref={ref} className="space-y-4">
@@ -47,10 +67,10 @@ export default function PlanPreview({ plan, onEdit, devotionalPlaces, stays, foo
         <div className="flex items-center justify-between mb-2">
           <div>
             <h3 className="font-bold text-lg">
-              {plan.meta.from} → {plan.meta.to}
+              {meta.from || "—"} → {meta.to || "—"}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {plan.meta.days} days • {plan.meta.persons} person{plan.meta.persons > 1 ? "s" : ""} • {plan.distanceEmoji} {plan.distance} km
+              {meta.days ?? 0} days • {meta.persons ?? 1} person{(meta.persons ?? 1) > 1 ? "s" : ""} • {plan.distanceEmoji} {plan.distance ?? 0} km
             </p>
           </div>
           <button
@@ -67,7 +87,7 @@ export default function PlanPreview({ plan, onEdit, devotionalPlaces, stays, foo
           <span className="px-2 py-1 rounded-full bg-primary/10 text-primary">
             {plan.distanceEmoji} {plan.distanceLabel}
           </span>
-          {crowd && (
+          {crowd?.crowd_level && (
             <span className="px-2 py-1 rounded-full bg-primary/10 text-primary">
               {crowd.crowd_level === "low" ? "🟢" : crowd.crowd_level === "medium" ? "🟡" : "🔴"}{" "}
               {crowd.crowd_level} crowd
@@ -82,7 +102,7 @@ export default function PlanPreview({ plan, onEdit, devotionalPlaces, stays, foo
           <h4 className="font-semibold text-sm mb-3">
             📅 Day {day.day}
             <span className="text-xs text-muted-foreground ml-2">
-              ₹{day.dayCost?.toLocaleString("en-IN") || "—"} • {day.travelDistance}km travel
+              ₹{day.dayCost?.toLocaleString("en-IN") || "—"} • {safeStr(day.travelDistance)}km travel
             </span>
           </h4>
           <div className="space-y-2">
@@ -102,8 +122,8 @@ export default function PlanPreview({ plan, onEdit, devotionalPlaces, stays, foo
               <div key={i} className="flex items-start gap-2 text-sm">
                 <span className="text-primary mt-0.5">✨</span>
                 <div>
-                  <div className="font-medium">{h.name}</div>
-                  <div className="text-xs text-muted-foreground">{h.whySpecial} • {h.distance}km</div>
+                  <div className="font-medium">{safeStr(h.name)}</div>
+                  <div className="text-xs text-muted-foreground">{safeStr(h.whySpecial)} • {safeStr(h.distance)}km</div>
                 </div>
               </div>
             ))}
@@ -125,7 +145,7 @@ export default function PlanPreview({ plan, onEdit, devotionalPlaces, stays, foo
                     <span className="text-xs text-muted-foreground">⭐ {p.rating}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {p.type} • {p.distance_km}km • {p.timings}
+                    {safeStr(p.type)} • {safeStr(p.distance_km)}km • {safeStr(p.timings)}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${
@@ -139,8 +159,8 @@ export default function PlanPreview({ plan, onEdit, devotionalPlaces, stays, foo
                       <span className="text-xs text-muted-foreground">₹{p.entry_fee} entry</span>
                     )}
                   </div>
-                  {p.festivals && p.festivals.length > 0 && (
-                    <div className="text-xs text-primary/80 mt-0.5">🎉 {p.festivals.join(", ")}</div>
+                  {p.festivals && Array.isArray(p.festivals) && p.festivals.length > 0 && (
+                    <div className="text-xs text-primary/80 mt-0.5">🎉 {p.festivals.map(safeStr).join(", ")}</div>
                   )}
                 </div>
               </div>
@@ -211,37 +231,42 @@ export default function PlanPreview({ plan, onEdit, devotionalPlaces, stays, foo
       )}
 
       {/* Budget breakdown */}
-      <div className="plan-section glass-card p-4 rounded-2xl">
-        <h4 className="font-semibold text-sm mb-3">💰 Budget Breakdown</h4>
-        <div className="space-y-1.5">
-          <BudgetRow emoji="🚌" label="Transport" value={bb.transport} total={bb.total} />
-          <BudgetRow emoji="🏨" label="Stay" value={bb.stay} total={bb.total} />
-          <BudgetRow emoji="🍽" label="Food" value={bb.food} total={bb.total} />
-          <BudgetRow emoji="🎯" label="Activities" value={bb.activities} total={bb.total} />
-          <BudgetRow emoji="🛡" label="Buffer" value={bb.buffer} total={bb.total} />
-          <div className="border-t border-border pt-1 flex justify-between font-bold text-sm">
-            <span>Total</span>
-            <span>₹{bb.total.toLocaleString("en-IN")}</span>
+      {bb.total > 0 && (
+        <div className="plan-section glass-card p-4 rounded-2xl">
+          <h4 className="font-semibold text-sm mb-3">💰 Budget Breakdown</h4>
+          <div className="space-y-1.5">
+            <BudgetRow emoji="🚌" label="Transport" value={bb.transport ?? 0} total={bb.total} />
+            <BudgetRow emoji="🏨" label="Stay" value={bb.stay ?? 0} total={bb.total} />
+            <BudgetRow emoji="🍽" label="Food" value={bb.food ?? 0} total={bb.total} />
+            <BudgetRow emoji="🎯" label="Activities" value={bb.activities ?? 0} total={bb.total} />
+            <BudgetRow emoji="🛡" label="Buffer" value={bb.buffer ?? 0} total={bb.total} />
+            <div className="border-t border-border pt-1 flex justify-between font-bold text-sm">
+              <span>Total</span>
+              <span>₹{(bb.total ?? 0).toLocaleString("en-IN")}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
 function TimeSlot({ emoji, label, slot }: { emoji: string; label: string; slot: any }) {
   if (!slot) return null;
+  const title = safeStr(slot.place || slot.activity);
+  const subtitle = safeStr(slot.description || slot.time);
+  const cost = typeof slot.cost === "number" ? slot.cost : 0;
   return (
     <div className="flex items-start gap-2 text-sm">
       <span>{emoji}</span>
       <div className="flex-1">
         <div className="flex items-center justify-between">
-          <span className="font-medium">{slot.place || slot.activity}</span>
-          {slot.cost > 0 && (
-            <span className="text-xs text-muted-foreground">₹{slot.cost}</span>
+          <span className="font-medium">{title}</span>
+          {cost > 0 && (
+            <span className="text-xs text-muted-foreground">₹{cost}</span>
           )}
         </div>
-        <div className="text-xs text-muted-foreground">{slot.description || slot.time}</div>
+        {subtitle && <div className="text-xs text-muted-foreground">{subtitle}</div>}
       </div>
     </div>
   );

@@ -91,6 +91,7 @@ const Booking = () => {
   const [minRating, setMinRating] = useState(0);
   const [openNowOnly, setOpenNowOnly] = useState(false);
   const [manualLocation, setManualLocation] = useState("");
+  const [fromCity, setFromCity] = useState("");
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [customLocation, setCustomLocation] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -139,6 +140,13 @@ const Booking = () => {
       fetchPlaces();
     }
   }, [selectedCategory]);
+
+  // Auto-populate fromCity from GPS
+  useEffect(() => {
+    if (location && !fromCity) {
+      setFromCity("Your Location");
+    }
+  }, [location]);
 
   const fetchPlaces = async () => {
     if (!activeLocation) return;
@@ -270,7 +278,6 @@ const Booking = () => {
   }, []);
 
   const isLoading = placesLoading || geoLoading;
-  const showLocationInput = geoError && !customLocation;
 
   return (
     <div ref={pageRef} className="min-h-screen bg-background pb-24">
@@ -312,33 +319,55 @@ const Booking = () => {
           )}
         </div>
 
-        {/* Manual Location Input (if GPS denied) */}
-        {showLocationInput && (
-          <div className="flex gap-2">
+        {/* From / To location inputs — always visible */}
+        <div className="space-y-2">
+          {/* From */}
+          <div className="flex gap-2 items-center">
+            <div className="w-8 flex-shrink-0 flex flex-col items-center">
+              <div className="w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
+              <div className="w-0.5 h-4 bg-white/30" />
+            </div>
+            <input
+              type="text"
+              value={fromCity}
+              onChange={(e) => setFromCity(e.target.value)}
+              placeholder={geoLoading ? "Detecting location…" : "From — your start point"}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none text-sm"
+            />
+          </div>
+
+          {/* To + Search button */}
+          <div className="flex gap-2 items-center">
+            <div className="w-8 flex-shrink-0 flex items-center justify-center">
+              <div className="w-3 h-3 rounded-full bg-red-400 border-2 border-white" />
+            </div>
             <input
               type="text"
               value={manualLocation}
               onChange={(e) => setManualLocation(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && searchLocation()}
-              placeholder="Enter city or area name..."
-              className="flex-1 px-4 py-3 rounded-xl bg-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none"
+              placeholder="To — destination city or area"
+              className="flex-1 px-4 py-2.5 rounded-xl bg-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none text-sm"
             />
             <button
               onClick={searchLocation}
-              disabled={isSearchingLocation}
-              className="px-4 py-3 rounded-xl bg-white text-primary font-semibold flex items-center gap-2"
+              disabled={isSearchingLocation || !manualLocation.trim()}
+              className="px-3 py-2.5 rounded-xl bg-white text-primary font-semibold flex items-center gap-1 text-sm disabled:opacity-50"
             >
               {isSearchingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <LocateFixed className="w-4 h-4" />}
-              Search
             </button>
           </div>
-        )}
+        </div>
 
-        {/* Location indicator */}
-        {activeLocation && !showLocationInput && (
-          <p className="text-xs text-white/70 flex items-center gap-1 mt-2">
-            <MapPin className="w-3 h-3" />
-            Showing results near {customLocation ? manualLocation || "searched location" : "your location"}
+        {/* Active location indicator */}
+        {activeLocation && (
+          <p className="text-xs text-white/70 flex items-center gap-1 mt-1">
+            <Navigation className="w-3 h-3" />
+            {fromCity && manualLocation
+              ? `${fromCity} → ${manualLocation}`
+              : manualLocation
+              ? `Searching near ${manualLocation}`
+              : "Searching near your location"}
           </p>
         )}
       </div>

@@ -170,7 +170,9 @@ export default function CityAutocomplete({
 
   // Handle scroll outside to close dropdown
   useEffect(() => {
-    const handleScroll = () => {
+    const handleScroll = (e: Event) => {
+      // If the scroll target is inside our container, don't close
+      if (containerRef.current?.contains(e.target as Node)) return;
       setOpen(false);
     };
     if (open) {
@@ -206,7 +208,10 @@ export default function CityAutocomplete({
       </div>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-150 z-50">
+        <div 
+          data-suggestions
+          className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-150 z-50"
+        >
           {/* Header for Popular/Live */}
           {results.length > 0 && (
             <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-medium bg-muted/30 flex items-center gap-1">

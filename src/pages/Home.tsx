@@ -34,6 +34,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useUser } from "@/contexts/UserContext";
 import { ThreeScene, LazyParticleField } from "@/components/three/LazyThreeScenes";
 import LiveLocationMap, { type RouteInfo } from "@/components/LiveLocationMap";
+import WeatherReport from "@/components/WeatherReport";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -44,6 +45,7 @@ const Home = () => {
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [greeting, setGreeting] = useState("");
   const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [showWeather, setShowWeather] = useState(false);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [destQuery, setDestQuery] = useState("");
   const [destSuggestions, setDestSuggestions] = useState<{ display_name: string; lat: string; lon: string }[]>([]);
@@ -299,9 +301,12 @@ const Home = () => {
           <Link to="/profile" className="w-12 h-12 rounded-full bg-primary-foreground/20 flex items-center justify-center backdrop-blur-sm text-2xl">
             {avatar}
           </Link>
-          <button className="w-12 h-12 rounded-full bg-primary-foreground/20 flex items-center justify-center relative backdrop-blur-sm">
+          <button 
+            onClick={() => setShowWeather(true)}
+            className="w-12 h-12 rounded-full bg-primary-foreground/20 flex items-center justify-center relative backdrop-blur-sm hover:bg-primary-foreground/30 transition-colors"
+          >
             <Bell className="w-6 h-6 text-primary-foreground" />
-            <span className="absolute top-2 right-2 w-3 h-3 bg-accent rounded-full" />
+            <span className="absolute top-2 right-2 w-3 h-3 bg-accent rounded-full animate-pulse" />
           </button>
         </div>
 
@@ -488,6 +493,13 @@ const Home = () => {
 
       {/* Bottom Navigation */}
       <BottomNav />
+
+      {/* Weather Report Modal */}
+      <WeatherReport
+        isOpen={showWeather}
+        onClose={() => setShowWeather(false)}
+        userLocation={userLocation ? { lat: userLocation[0], lng: userLocation[1] } : null}
+      />
     </div>
   );
 };
