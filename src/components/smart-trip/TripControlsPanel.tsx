@@ -109,8 +109,8 @@ export default function TripControlsPanel({ values, onChange, flightAvailable, a
 
   return (
     <div ref={panelRef} className="space-y-5">
-      {/* From / To — high z-index so dropdown overlays below sections */}
-      <div className="ctrl-section grid grid-cols-[1fr,auto,1fr] gap-2 items-end relative" style={{ zIndex: 50 }}>
+      {/* From / To — can be scrolled, dropdown closes on scroll */}
+      <div className="ctrl-section grid grid-cols-[1fr,auto,1fr] gap-2 items-end relative">
         <CityAutocomplete
           value={values.fromCity}
           onChange={(city) => set({

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import {
   HelpCircle,
   LogOut,
   Camera,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
@@ -23,6 +24,8 @@ import { useLanguage, Language } from "@/contexts/LanguageContext";
 import { useUser } from "@/contexts/UserContext";
 import AvatarPicker from "@/components/AvatarPicker";
 import DarkModeToggle from "@/components/DarkModeToggle";
+import { supabase } from "@/integrations/supabase/client";
+import { updateUserProfile, getCurrentUser } from "@/integrations/supabase/auth";
 
 interface EmergencyContact {
   id: string;
@@ -41,28 +44,82 @@ const Profile = () => {
   const [editForm, setEditForm] = useState({ name: userName, phone: userPhone });
   const [showLanguages, setShowLanguages] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [newContact, setNewContact] = useState({ name: "", phone: "", relation: "" });
   const [contacts, setContacts] = useState<EmergencyContact[]>([
     { id: "1", name: "Mom", phone: "+91 98765 00001", relation: "Mother", isPrimary: true },
     { id: "2", name: "Dad", phone: "+91 98765 00002", relation: "Father", isPrimary: false },
   ]);
 
+  // Load emergency contacts from Supabase
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          // @ts-ignore
+          const { data } = await supabase
+            .from('users_profile')
+            .select('emergency_contacts')
+            .eq('id', user.id)
+            .single();
+          
+          if (data && data.emergency_contacts) {
+            setContacts(data.emergency_contacts);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load user data:', error);
+      }
+    };
+    
+    loadUserData();
+  }, []);
+
   const handleStartEdit = () => {
     setEditForm({ name: userName, phone: userPhone });
     setIsEditing(true);
   };
 
-  const handleSaveProfile = () => {
-    setName(editForm.name);
-    setPhone(editForm.phone);
-    setIsEditing(false);
-    toast({
-      title: t.save,
-      description: "Your profile has been saved successfully",
-    });
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      // Update local context
+      setName(editForm.name);
+      setPhone(editForm.phone);
+      
+      // Update Supabase
+      const { error } = await updateUserProfile({
+        fullName: editForm.name,
+        phoneNumber: editForm.phone,
+      });
+      
+      if (error) {
+        toast({
+          title: "Save Failed",
+          description: error.message || "Failed to save profile to database",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setIsEditing(false);
+      toast({
+        title: t.save,
+        description: "Your profile has been saved successfully to Supabase",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save profile",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleAddContact = () => {
+  const handleAddContact = async () => {
     if (!newContact.name || !newContact.phone || !newContact.relation) {
       toast({
         title: "Missing Information",
@@ -72,42 +129,109 @@ const Profile = () => {
       return;
     }
 
-    const contact: EmergencyContact = {
-      id: Date.now().toString(),
-      name: newContact.name,
-      phone: newContact.phone,
-      relation: newContact.relation,
-      isPrimary: contacts.length === 0,
-    };
+    try {
+      const contact: EmergencyContact = {
+        id: Date.now().toString(),
+        name: newContact.name,
+        phone: newContact.phone,
+        relation: newContact.relation,
+        isPrimary: contacts.length === 0,
+      };
 
-    setContacts([...contacts, contact]);
-    setNewContact({ name: "", phone: "", relation: "" });
-    setShowAddContact(false);
-    toast({
-      title: t.add,
-      description: `${contact.name} has been added as an emergency contact`,
-    });
+      const updatedContacts = [...contacts, contact];
+      setContacts(updatedContacts);
+      
+      // Save to Supabase
+      const user = await getCurrentUser();
+      if (user) {
+        const { error } = await supabase
+          .from('users_profile')
+          .update({ emergency_contacts: updatedContacts })
+          .eq('id', user.id);
+        
+        if (error) {
+          throw error;
+        }
+      }
+      
+      setNewContact({ name: "", phone: "", relation: "" });
+      setShowAddContact(false);
+      toast({
+        title: t.add,
+        description: `${contact.name} has been added as an emergency contact`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add contact",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteContact = (id: string) => {
-    setContacts(contacts.filter((c) => c.id !== id));
-    toast({
-      title: t.delete,
-      description: "Emergency contact has been deleted",
-    });
+  const handleDeleteContact = async (id: string) => {
+    try {
+      const updatedContacts = contacts.filter((c) => c.id !== id);
+      setContacts(updatedContacts);
+      
+      // Save to Supabase
+      const user = await getCurrentUser();
+      if (user) {
+        const { error } = await supabase
+          .from('users_profile')
+          .update({ emergency_contacts: updatedContacts })
+          .eq('id', user.id);
+        
+        if (error) {
+          throw error;
+        }
+      }
+      
+      toast({
+        title: t.delete,
+        description: "Emergency contact has been deleted",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete contact",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleSetPrimary = (id: string) => {
-    setContacts(
-      contacts.map((c) => ({
+  const handleSetPrimary = async (id: string) => {
+    try {
+      const updatedContacts = contacts.map((c) => ({
         ...c,
         isPrimary: c.id === id,
-      }))
-    );
-    toast({
-      title: t.primary,
-      description: "This contact will be notified first in emergencies",
-    });
+      }));
+      setContacts(updatedContacts);
+      
+      // Save to Supabase
+      const user = await getCurrentUser();
+      if (user) {
+        const { error } = await supabase
+          .from('users_profile')
+          .update({ emergency_contacts: updatedContacts })
+          .eq('id', user.id);
+        
+        if (error) {
+          throw error;
+        }
+      }
+      
+      toast({
+        title: t.primary,
+        description: "This contact will be notified first in emergencies",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to set primary contact",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleLanguageSelect = (lang: Language) => {
@@ -194,8 +318,19 @@ const Profile = () => {
                 <button onClick={() => setIsEditing(false)} className="flex-1 btn-secondary">
                   {t.cancel}
                 </button>
-                <button onClick={handleSaveProfile} className="flex-1 btn-primary">
-                  {t.save}
+                <button 
+                  onClick={handleSaveProfile} 
+                  disabled={isSaving}
+                  className="flex-1 btn-primary flex items-center justify-center gap-2"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    t.save
+                  )}
                 </button>
               </div>
             </div>

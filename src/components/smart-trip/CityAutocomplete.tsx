@@ -168,8 +168,19 @@ export default function CityAutocomplete({
   };
 
 
+  // Handle scroll outside to close dropdown
+  useEffect(() => {
+    const handleScroll = () => {
+      setOpen(false);
+    };
+    if (open) {
+      window.addEventListener("scroll", handleScroll, true);
+      return () => window.removeEventListener("scroll", handleScroll, true);
+    }
+  }, [open]);
+
   return (
-    <div ref={containerRef} className="relative w-full" style={{ zIndex: open ? 100 : 1 }}>
+    <div ref={containerRef} className="relative w-full">
       {label && (
         <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
           {icon} {label}
@@ -195,7 +206,7 @@ export default function CityAutocomplete({
       </div>
 
       {open && (
-        <div className="absolute mt-1 w-full bg-background border border-border rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-150" style={{ zIndex: 9999 }}>
+        <div className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-150 z-50">
           {/* Header for Popular/Live */}
           {results.length > 0 && (
             <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-medium bg-muted/30 flex items-center gap-1">

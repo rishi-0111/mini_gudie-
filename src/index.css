@@ -110,6 +110,14 @@
     --gradient-primary: linear-gradient(135deg, hsl(270 70% 40%) 0%, hsl(290 60% 50%) 50%, hsl(270 50% 55%) 100%);
     --gradient-hero: linear-gradient(180deg, hsl(270 60% 15%) 0%, hsl(280 55% 25%) 100%);
     --gradient-card: linear-gradient(145deg, hsl(270 40% 12%) 0%, hsl(270 35% 8%) 100%);
+
+    /* Neon text colors for dark mode */
+    --neon-white: 0 0% 95%;
+    --neon-cyan: 180 100% 50%;
+    --neon-purple: 280 100% 50%;
+    --neon-pink: 320 100% 50%;
+    --neon-green: 120 100% 50%;
+    --neon-yellow: 45 100% 50%;
   }
 }
 
@@ -450,6 +458,100 @@
     animation-delay: 0.30s;
   }
 
+  /* ── Color utilities ── */
+  .text-primary-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-gradient-hero-variant {
+    background: var(--gradient-hero);
+  }
+
+  /* ── Responsive font sizes ── */
+  @media (max-width: 640px) {
+    .text-responsive {
+      @apply text-sm;
+    }
+    .text-heading-responsive {
+      @apply text-xl;
+    }
+  }
+
+  @media (min-width: 641px) {
+    .text-responsive {
+      @apply text-base;
+    }
+    .text-heading-responsive {
+      @apply text-2xl;
+    }
+  }
+
+  /* ── Focus states ── */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2 focus:ring-offset-background;
+  }
+
+  /* ── Text utilities ── */
+  .text-truncate {
+    @apply truncate;
+  }
+
+  .text-line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .text-line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ── Interactive states ── */
+  .interactive {
+    @apply cursor-pointer select-none transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/20;
+  }
+
+  /* ── Custom scrollbar ── */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted) / 0.2);
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.5);
+    border-radius: 10px;
+    transition: background 0.3s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.7);
+  }
+
+  /* ── Dark mode scrollbar ── */
+  .dark ::-webkit-scrollbar-track {
+    background: hsl(var(--secondary) / 0.3);
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.6);
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.8);
+  }
+
   /* Named animations */
   .animate-fade-in {
     animation: fadeIn 0.5s ease-out both;
@@ -600,7 +702,166 @@
     backface-visibility: hidden;
     perspective: 1000px;
   }
-}
+
+  /* ── Neon glow effect for dark mode ── */
+  .dark .neon-glow {
+    text-shadow: 0 0 10px currentColor;
+    animation: pulse-neon 2s ease-in-out infinite;
+  }
+
+  /* ── Glassmorphism effect ── */
+  .glass-effect {
+    background: hsl(var(--card) / 0.5);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid hsl(var(--border) / 0.3);
+  }
+
+  /* ── Shimmer on hover ── */
+  .shimmer-on-hover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--primary) / 0.3),
+      transparent
+    );
+    animation: shimmer-slide 2s infinite;
+  }
+
+  @keyframes shimmer-slide {
+    0% {
+      left: -100%;
+    }
+    100% {
+      left: 100%;
+    }
+  }
+
+  /* ── Text gradient ── */
+  .text-gradient-purple {
+    background: linear-gradient(135deg, hsl(270 70% 50%) 0%, hsl(280 60% 60%) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Neon text utility classes ── */
+  .dark .text-neon-white {
+    color: hsl(var(--neon-white));
+    text-shadow: 0 0 5px hsl(var(--neon-white) / 0.5);
+  }
+
+  .dark .text-neon-cyan {
+    color: hsl(var(--neon-cyan));
+    text-shadow: 0 0 5px hsl(var(--neon-cyan) / 0.5);
+  }
+
+  .dark .text-neon-purple {
+    color: hsl(var(--neon-purple));
+    text-shadow: 0 0 5px hsl(var(--neon-purple) / 0.5);
+  }
+
+  .dark .text-neon-pink {
+    color: hsl(var(--neon-pink));
+    text-shadow: 0 0 5px hsl(var(--neon-pink) / 0.5);
+  }
+
+  /* ── Border glow ── */
+  .border-glow {
+    @apply border-2 border-primary;
+    box-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+  }
+
+  /* ── Hover lift effect ── */
+  .hover-lift {
+    @apply transition-all duration-300;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-1 shadow-lg;
+  }
+
+  /* ── Responsive grid utilities ── */
+  @media (max-width: 640px) {
+    .responsive-grid {
+      @apply grid-cols-1;
+    }
+  }
+
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .responsive-grid {
+      @apply grid-cols-2;
+    }
+  }
+
+  @media (min-width: 1025px) {
+    .responsive-grid {
+      @apply grid-cols-3;
+    }
+  }
+
+  /* ── floating animation ── */
+  .float-animation {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+
+  /* ── Attention-seeking animations ── */
+  .wiggle {
+    animation: wiggle 0.5s ease-in-out;
+  }
+
+  @keyframes wiggle {
+    0%, 100% {
+      transform: rotate(0deg);
+    }
+    25% {
+      transform: rotate(-2deg);
+    }
+    75% {
+      transform: rotate(2deg);
+    }
+  }
+
+  .heartbeat {
+    animation: heartbeat 1.3s ease-in-out infinite;
+  }
+
+  @keyframes heartbeat {
+    0%, 100% {
+      transform: scale(1);
+    }
+    14% {
+      transform: scale(1.15);
+    }
+    28% {
+      transform: scale(1);
+    }
+  }
+
+  /* ── Scroll snap ── */
+  .snap-container {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .snap-item {
+    scroll-snap-align: start;
+  }
 
 /* ─── prefers-reduced-motion accessibility ─────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

@@ -342,6 +342,8 @@ const Login = () => {
     if (savedRememberMe === "true" && savedMobile) {
       setRememberMe(true);
       setFormData((prev) => ({ ...prev, mobile: savedMobile }));
+    } else {
+      setRememberMe(false);
     }
   }, []);
 

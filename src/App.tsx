@@ -19,6 +19,10 @@ import TestSupabase from "./pages/TestSupabase";
 import NotFound from "./pages/NotFound";
 import DevotionalTripPlanner from "./pages/DevotionalTripPlanner";
 import SmartTripPlanner from "./pages/SmartTripPlanner";
+import CategoryDetail from "./pages/CategoryDetail";
+import Payment from "./pages/Payment";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import { ParticleSystemBackground } from "@/components/ParticleSystemBackground";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +33,12 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          {/* Animated Background */}
+          <ParticleSystemBackground 
+            particleCount={30} 
+            particleSpeed={0.3}
+            interactive={true}
+          />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<SplashScreen />} />
@@ -44,6 +54,9 @@ const App = () => (
               <Route path="/explore" element={<Explore />} />
               <Route path="/discover" element={<Discover />} />
               <Route path="/booking" element={<Booking />} />
+              <Route path="/payment" element={<Payment />} />
+              <Route path="/payment-success" element={<PaymentSuccess />} />
+              <Route path="/category/:slug" element={<CategoryDetail />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

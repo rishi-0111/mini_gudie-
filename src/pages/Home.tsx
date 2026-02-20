@@ -270,12 +270,12 @@ const Home = () => {
   };
 
   const categories = [
-    { icon: Building2, label: t.temples, color: "bg-orange-500", to: "/devotional" },
-    { icon: Stethoscope, label: t.hospitals, color: "bg-blue-500", to: "/explore?cat=hospital" },
-    { icon: Siren, label: t.emergency, color: "bg-red-500", to: "/explore?cat=emergency" },
-    { icon: Sparkles, label: t.hiddenSpots, color: "bg-accent", to: "/discover" },
-    { icon: Hotel, label: t.hostels, color: "bg-green-500", to: "/explore?cat=hostel" },
-    { icon: Car, label: t.transport, color: "bg-purple-500", to: "/explore?cat=transport" },
+    { icon: Building2, label: t.temples, color: "bg-orange-500", to: "/category/temples" },
+    { icon: Stethoscope, label: t.hospitals, color: "bg-blue-500", to: "/category/hospitals" },
+    { icon: Siren, label: t.emergency, color: "bg-red-500", to: "/category/emergency" },
+    { icon: Sparkles, label: t.hiddenSpots, color: "bg-accent", to: "/category/hidden-spots" },
+    { icon: Hotel, label: t.hostels, color: "bg-green-500", to: "/category/hostels" },
+    { icon: Car, label: t.transport, color: "bg-purple-500", to: "/category/transport" },
   ];
 
   const quickActions = [
@@ -443,6 +443,7 @@ const Home = () => {
                 icon={category.icon}
                 label={category.label}
                 colorClass={category.color}
+                to={category.to}
               />
             ))}
           </div>
