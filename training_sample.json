@@ -1,0 +1,17 @@
+{
+  "prompt": "You are a smart Indian trip planner. Generate a complete trip plan based on these filters:\n\nFROM: Kumbakonam\nTO: Chennai\nDISTANCE: 305 km\nBUDGET: \u20b95000 total for 2 persons\nDAYS: 2 days (\u20b92500/day)\nDATE: 21-02-2026\nTRANSPORT: Bus (~4h 6m)\nMIN HOTEL RATING: 3+ stars\nTRAVEL TYPE: Smart Traveler\nNote: Travel date falls on a weekend. Expect 15-20% higher pricing.\n\nGenerate:\n1. Day-wise itinerary\n2. Hotel suggestions (3+ stars only, within budget)\n3. Restaurant recommendations\n4. Complete budget breakdown (must not exceed \u20b95000)\n5. Top 5 attractions in Chennai\n6. Local tips and travel advice",
+  "filters": {
+    "from": "Kumbakonam",
+    "to": "Chennai",
+    "distance": 305,
+    "budget": 5000,
+    "days": 2,
+    "date": "21-02-2026",
+    "persons": 2,
+    "transport_mode": "Bus",
+    "travel_time": "4h 6m",
+    "min_rating": 3,
+    "travel_type": "Smart Traveler",
+    "is_weekend": true
+  }
+}

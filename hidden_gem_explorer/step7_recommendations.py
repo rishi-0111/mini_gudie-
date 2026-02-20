@@ -18,9 +18,14 @@ DATA_DIR = r"d:\miniguide\hidden_gem_explorer\data"
 MODEL_DIR = r"d:\miniguide\hidden_gem_explorer\models"
 
 
+_DATA_CACHE = None
+
 def _load_data():
-    """Load the scored dataset with all features."""
-    return pd.read_parquet(os.path.join(DATA_DIR, "final.parquet"))
+    """Load the scored dataset with all features. Cached in-memory after first load."""
+    global _DATA_CACHE
+    if _DATA_CACHE is None:
+        _DATA_CACHE = pd.read_parquet(os.path.join(DATA_DIR, "final.parquet"), engine="pyarrow")
+    return _DATA_CACHE
 
 
 def _load_model():
