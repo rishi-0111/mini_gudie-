@@ -35,9 +35,12 @@ export default function TripMap({
 
   // Dynamic import Leaflet
   useEffect(() => {
-    import("leaflet").then((mod) => {
+    const loadLeaflet = async () => {
+      const mod = await import("leaflet");
+      await import("leaflet/dist/leaflet.css");
       setL(mod.default || mod);
-    });
+    };
+    loadLeaflet();
   }, []);
 
   // Animate in/out

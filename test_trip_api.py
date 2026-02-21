@@ -2,28 +2,41 @@
 import httpx, json, time
 
 start = time.time()
-resp = httpx.post(
-    "http://localhost:8000/generate-trip",
-    json={
-        "from_location": "New Delhi",
-        "destination": "Jaipur",
-        "budget_min": 5000,
-        "budget_max": 20000,
-        "days": 3,
-        "transport_mode": "mixed",
-        "rating": 3.5,
-        "hidden_spots": True,
-        "distance": 100,
-    },
-    timeout=30,
-)
+try:
+    resp = httpx.post(
+        "http://localhost:8000/generate-trip",
+        json={
+            "from_location": "New Delhi",
+            "destination": "Jaipur",
+            "budget_min": 5000,
+            "budget_max": 20000,
+            "days": 3,
+            "transport_mode": "mixed",
+            "rating": 3.5,
+            "hidden_spots": True,
+            "distance": 100,
+        },
+        timeout=60,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+except Exception as e:
+    print(f"FAILED to call API: {e}")
+    if 'resp' in locals() and hasattr(resp, 'text'):
+        print(f"Response text: {resp.text}")
+    exit(1)
+
 elapsed = time.time() - start
-data = resp.json()
 
 if "error" in data:
     print(f"ERROR: {data['error']}")
 else:
-    ov = data["tripOverview"]
+    ov = data.get("tripOverview")
+    if not ov:
+        print("ERROR: Response missing 'tripOverview'")
+        print(json.dumps(data, indent=2))
+        exit(1)
+        
     print(f"=== Trip: {ov['from']} → {ov['to']} | {ov['days']} days ===")
     print(f"Budget: ₹{ov['totalBudget']:,}")
     print(f"Dest coords: ({ov.get('destLat')}, {ov.get('destLng')})")
@@ -45,3 +58,4 @@ else:
     if data.get("stats"):
         print(f"Stats: {data['stats']}")
     print(f"\n⏱ {elapsed:.1f}s")
+

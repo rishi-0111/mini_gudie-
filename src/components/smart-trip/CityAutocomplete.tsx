@@ -1,6 +1,6 @@
 /**
- * CityAutocomplete — Real-time place search powered by Nominatim (OpenStreetMap).
- * Respects usage limits and provides clean address parsing.
+ * CityAutocomplete — Powered by local AI search + Nominatim.
+ * Provides clean address parsing and respects rate limits.
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -22,6 +22,8 @@ interface CityAutocompleteProps {
   label?: string;
 }
 
+const API_BASE = import.meta.env.VITE_HIDDEN_GEM_API_URL || "http://localhost:8000";
+
 const POPULAR_CITIES = [
   { name: "Jaipur", displayName: "Jaipur, Rajasthan, India", lat: 26.9124, lon: 75.7873 },
   { name: "Delhi", displayName: "Delhi, India", lat: 28.6139, lon: 77.2090 },
@@ -32,7 +34,6 @@ const POPULAR_CITIES = [
   { name: "Udaipur", displayName: "Udaipur, Rajasthan, India", lat: 24.5854, lon: 73.7125 },
   { name: "Agra", displayName: "Agra, Uttar Pradesh, India", lat: 27.1767, lon: 78.0081 },
 ];
-
 
 export default function CityAutocomplete({
   value,
@@ -64,23 +65,20 @@ export default function CityAutocomplete({
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
         setFocused(false);
+        // If query is not empty but no city selected, update parent with just the name
+        if (query.trim() && query !== value) {
+          onChange({
+            name: query,
+            displayName: query,
+            lat: 0,
+            lon: 0
+          });
+        }
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  // Address Parsing Logic
-  const parseName = (address: any, fallbackName: string): string => {
-    const priority = [
-      "amenity", "tourism", "neighbourhood", "suburb",
-      "village", "town", "city_district", "city", "county"
-    ];
-    for (const key of priority) {
-      if (address[key]) return address[key];
-    }
-    return fallbackName;
-  };
+  }, [query, value, onChange]);
 
   const searchPlaces = useCallback(async (q: string) => {
     if (q.length < 2) {
@@ -91,39 +89,35 @@ export default function CityAutocomplete({
     setLoading(true);
     setError(null);
 
-    // Cancel previous request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     abortControllerRef.current = new AbortController();
 
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=10&accept-language=en&dedupe=1`;
+      // Use local backend search for better Indian city data
+      const url = `${API_BASE}/search-cities?q=${encodeURIComponent(q)}`;
 
       const response = await fetch(url, {
-        headers: {
-          "User-Agent": "MiniGudie/1.0 (contact@minigudie.ai)"
-        },
         signal: abortControllerRef.current.signal
       });
 
       if (!response.ok) throw new Error("Search failed");
 
       const data = await response.json();
-
-      const mappedResults: CityResult[] = data.map((item: any) => ({
-        name: parseName(item.address, item.name || item.display_name.split(",")[0]),
-        displayName: item.display_name,
-        lat: parseFloat(item.lat),
-        lon: parseFloat(item.lon),
-        type: "live"
+      const mappedResults: CityResult[] = (data.results || []).map((item: any) => ({
+        name: item.name,
+        displayName: item.displayName || item.display_name || item.name,
+        lat: item.lat,
+        lon: item.lng ?? item.lon ?? 0,
+        type: item.type || "live"
       }));
 
       setResults(mappedResults);
     } catch (err: any) {
       if (err.name !== "AbortError") {
-        setError("Could not load results");
-        console.error("OSM Error:", err);
+        setError("Search unavailable");
+        console.error("Search Error:", err);
       }
     } finally {
       setLoading(false);
@@ -137,11 +131,9 @@ export default function CityAutocomplete({
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    // Trigger after 2+ characters with 350ms debounce
     if (val.length >= 2) {
       debounceRef.current = setTimeout(() => searchPlaces(val), 350);
     } else {
-      // Show popular results if characters < 2
       setResults(POPULAR_CITIES.map(c => ({ ...c, type: "popular" })));
     }
   };
@@ -167,11 +159,19 @@ export default function CityAutocomplete({
     });
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      if (results.length > 0) {
+        handleSelect(results[0]);
+      } else if (query.trim()) {
+        onChange({ name: query, displayName: query, lat: 0, lon: 0 });
+        setOpen(false);
+      }
+    }
+  };
 
-  // Handle scroll outside to close dropdown
   useEffect(() => {
     const handleScroll = (e: Event) => {
-      // If the scroll target is inside our container, don't close
       if (containerRef.current?.contains(e.target as Node)) return;
       setOpen(false);
     };
@@ -200,6 +200,7 @@ export default function CityAutocomplete({
           value={query}
           onChange={handleInputChange}
           onFocus={handleFocus}
+          onKeyDown={handleKeyDown}
           autoComplete="off"
         />
         {loading && (
@@ -208,11 +209,10 @@ export default function CityAutocomplete({
       </div>
 
       {open && (
-        <div 
+        <div
           data-suggestions
           className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-150 z-50"
         >
-          {/* Header for Popular/Live */}
           {results.length > 0 && (
             <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-medium bg-muted/30 flex items-center gap-1">
               <Navigation className="w-2.5 h-2.5" />
@@ -220,14 +220,12 @@ export default function CityAutocomplete({
             </div>
           )}
 
-          {/* Error Message */}
           {error && (
             <div className="p-3 text-xs text-destructive flex items-center gap-2">
               <AlertCircle className="w-4 h-4" /> {error}
             </div>
           )}
 
-          {/* Results List */}
           {results.map((city, i) => (
             <button
               key={`${city.lat}-${city.lon}-${i}`}
@@ -245,20 +243,19 @@ export default function CityAutocomplete({
             </button>
           ))}
 
-          {/* No Results */}
           {!loading && !error && query.length >= 2 && results.length === 0 && (
             <div className="p-3 text-center text-sm text-muted-foreground">
               No results found
             </div>
           )}
 
-          {/* OSM Attribution */}
           <div className="px-3 py-1 text-[9px] text-muted-foreground/50 bg-muted/10 text-right">
-            © OpenStreetMap contributors
+            MiniGudie Smart Search
           </div>
         </div>
       )}
     </div>
   );
 }
+
 

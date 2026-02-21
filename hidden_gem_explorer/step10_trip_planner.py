@@ -251,7 +251,7 @@ async def fetch_supabase_places(
 
 # ── Category buckets for trip slots ──────────────────────────────────────────
 
-MORNING_CATS = ["temple", "landmark", "destination", "tourist"]
+MORNING_CATS = ["temple", "landmark", "hidden_spot", "destination", "tourist"]
 AFTERNOON_CATS = ["hidden_spot", "tourist", "destination", "landmark"]
 EVENING_CATS = ["restaurant", "hidden_spot", "tourist"]
 FOOD_CATS = ["restaurant"]
