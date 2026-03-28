@@ -13,8 +13,8 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.preprocessing import StandardScaler
 
-DATA_DIR = r"d:\miniguide\hidden_gem_explorer\data"
-MODEL_DIR = r"d:\miniguide\hidden_gem_explorer\models"
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
 os.makedirs(MODEL_DIR, exist_ok=True)
 
 FEATURES = [

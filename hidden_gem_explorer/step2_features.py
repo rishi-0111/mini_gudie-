@@ -10,7 +10,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 import os
 
-DATA_DIR = r"d:\miniguide\hidden_gem_explorer\data"
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 # ── Major Indian cities ──────────────────────────────────────
 MAJOR_CITIES = {

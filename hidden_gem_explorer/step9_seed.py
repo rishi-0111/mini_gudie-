@@ -8,8 +8,8 @@ import pandas as pd
 import os
 import json
 
-DATA_DIR = r"d:\miniguide\hidden_gem_explorer\data"
-OUT_DIR = r"d:\miniguide\supabase"
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "supabase")
 
 
 def escape_sql(s):
