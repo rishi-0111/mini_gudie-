@@ -14,8 +14,8 @@ import os
 import pickle
 from step2_features import haversine_km, count_nearby, MAJOR_CITIES
 
-DATA_DIR = r"d:\miniguide\hidden_gem_explorer\data"
-MODEL_DIR = r"d:\miniguide\hidden_gem_explorer\models"
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
 
 
 _DATA_CACHE = None
