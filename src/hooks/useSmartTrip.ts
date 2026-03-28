@@ -13,7 +13,7 @@
 import { useState, useCallback } from "react";
 
 const API_BASE =
-  import.meta.env.VITE_HIDDEN_GEM_API_URL || "http://localhost:8000";
+  import.meta.env.VITE_HIDDEN_GEM_API_URL || "https://web-production-4a409.up.railway.app";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -165,6 +165,9 @@ export function useSmartTrip() {
     setLoading(true);
     setError(null);
     try {
+      const controller = new AbortController();
+      const signal = controller.signal;
+
       const res = await fetch(`${API_BASE}/plan-trip`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -22,18 +22,9 @@ interface CityAutocompleteProps {
   label?: string;
 }
 
-const API_BASE = import.meta.env.VITE_HIDDEN_GEM_API_URL || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_HIDDEN_GEM_API_URL || "https://web-production-4a409.up.railway.app";
 
-const POPULAR_CITIES = [
-  { name: "Jaipur", displayName: "Jaipur, Rajasthan, India", lat: 26.9124, lon: 75.7873 },
-  { name: "Delhi", displayName: "Delhi, India", lat: 28.6139, lon: 77.2090 },
-  { name: "Mumbai", displayName: "Mumbai, Maharashtra, India", lat: 19.0760, lon: 72.8777 },
-  { name: "Bangalore", displayName: "Bangalore, Karnataka, India", lat: 12.9716, lon: 77.5946 },
-  { name: "Goa", displayName: "Goa, India", lat: 15.2993, lon: 74.1240 },
-  { name: "Varanasi", displayName: "Varanasi, Uttar Pradesh, India", lat: 25.3176, lon: 82.9739 },
-  { name: "Udaipur", displayName: "Udaipur, Rajasthan, India", lat: 24.5854, lon: 73.7125 },
-  { name: "Agra", displayName: "Agra, Uttar Pradesh, India", lat: 27.1767, lon: 78.0081 },
-];
+const POPULAR_CITIES: CityResult[] = [];
 
 export default function CityAutocomplete({
   value,
@@ -141,8 +132,8 @@ export default function CityAutocomplete({
   const handleFocus = () => {
     setFocused(true);
     if (!query.trim() || query.length < 2) {
-      setResults(POPULAR_CITIES.map(c => ({ ...c, type: "popular" })));
-      setOpen(true);
+      setResults([]);
+      setOpen(false);
     } else if (query.length >= 2) {
       setOpen(true);
     }
